@@ -2,12 +2,13 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getSearchPage, type EntityType } from "../api";
-import { EntityCard, LoadingGrid, SectionHeading, StatePanel } from "../components";
+import { AutoPageLoader, EntityCard, LoadingScene, SectionHeading, StatePanel } from "../components";
 
 const tabs: Array<{ value: EntityType; label: string; hint: string }> = [
   { value: "vn", label: "作品", hint: "标题、别名或 VNDB ID" },
   { value: "character", label: "角色", hint: "角色原名、罗马字或 ID" },
   { value: "staff", label: "声优", hint: "本名、艺名或 staff ID" },
+  { value: "tag", label: "Tag", hint: "题材、内容或技术标签" },
 ];
 
 export function SearchPage() {
@@ -83,7 +84,7 @@ export function SearchPage() {
             <p>不需要先判断它是中文标题、日文原名还是罗马字别名。</p>
           </StatePanel>
         ) : search.isPending ? (
-          <LoadingGrid />
+          <LoadingScene compact title="正在检索资料柜" note="首批 12 条结果准备好后会一次展开。" />
         ) : search.isError ? (
           <StatePanel title="暂时没有拿到结果" tone="error">
             <p>{search.error.message}</p>
@@ -94,16 +95,12 @@ export function SearchPage() {
             <div className="entity-grid">
               {items.map((entity) => <EntityCard key={entity.id} entity={entity} />)}
             </div>
-            {search.hasNextPage ? (
-              <button
-                className="load-more"
-                type="button"
-                disabled={search.isFetchingNextPage}
-                onClick={() => search.fetchNextPage()}
-              >
-                {search.isFetchingNextPage ? "正在取下一页…" : "加载下一页"}
-              </button>
-            ) : null}
+            <AutoPageLoader
+              hasNextPage={search.hasNextPage}
+              isFetching={search.isFetchingNextPage}
+              onLoad={() => void search.fetchNextPage()}
+              label="继续浏览搜索结果"
+            />
           </>
         ) : (
           <StatePanel title="没有匹配条目">
@@ -114,4 +111,3 @@ export function SearchPage() {
     </>
   );
 }
-

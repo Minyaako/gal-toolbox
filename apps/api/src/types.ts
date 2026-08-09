@@ -1,4 +1,4 @@
-export type EntityType = "vn" | "character" | "staff";
+export type EntityType = "vn" | "character" | "staff" | "tag";
 
 export type EntityName = {
   primary: string;
@@ -29,4 +29,3 @@ export type Page<T> = {
 };
 
 export type CacheStatus = "HIT" | "MISS" | "STALE";
-

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { getCharacter } from "../api";
-import { EntityCard, EntityImage, LoadingGrid, NameBlock, SectionHeading, StatePanel } from "../components";
+import { EntityCard, EntityImage, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
 
 const roleLabels = { main: "主人公", primary: "主要角色", side: "配角", appears: "登场" };
@@ -16,14 +16,14 @@ export function CharacterPage() {
     if (query.data) visit(query.data.entity);
   }, [query.data, visit]);
 
-  if (query.isPending) return <LoadingGrid />;
+  if (query.isPending) return <LoadingScene title="正在打开角色资料" note="立绘和登场作品正在归档。" />;
   if (query.isError) return <StatePanel title="角色资料加载失败" tone="error"><p>{query.error.message}</p></StatePanel>;
   const character = query.data;
 
   return (
     <article className="detail-page">
       <header className="detail-hero character-hero">
-        <EntityImage image={character.entity.image} alt={character.entity.name.primary} className="detail-cover" />
+        <EntityImage image={character.entity.image} alt={character.entity.name.primary} className="detail-cover" eager />
         <div className="detail-intro">
           <div className="record-id">VNDB / {character.entity.id}</div>
           <NameBlock entity={character.entity} />
@@ -43,4 +43,3 @@ export function CharacterPage() {
     </article>
   );
 }
-

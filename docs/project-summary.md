@@ -10,25 +10,32 @@
 - 默认分支：`main`。
 - 公开 VN、角色和 staff 查询不需要 VNDB 登录。
 - 已用真实 VNDB 数据验证：`v17 → s81 → character → VN`。
+- 已用真实 VNDB 数据验证：`Tag 搜索 → g19/g2380 → VN → VN Tag`。
 - 相同查询第二次返回 `X-Cache: HIT`。
 - VNDB staff 没有人物图片；当前使用字形头像和角色立绘。
 - VN 标题可优先选择 `zh-Hans/zh-Hant`；角色与 staff 只能可靠展示原文与罗马字。
+- OpenAPI 3.1 文档位于 `/api/v1/openapi.json`，轻量文档页位于 `/api/docs`。
+- 搜索、staff 角色和 Tag 作品列表默认每页 12 条，并在距页尾 600px 时自动预取。
 
 ## Decisions
 
 - React + TypeScript Web，Fastify BFF，Node SQLite TTL 缓存。
 - API 固定在 `/api/v1`，前端不使用 VNDB 原始结构。
 - 名称优先级：简中 → 繁中 → 原文 → 罗马字。
-- MVP 优先确定性关系探索，Tag/Trait 相似推荐延期。
+- MVP 优先确定性关系探索；已接入 VNDB Tag 搜索、VN→Tag 与 Tag→VN，Trait 和相似推荐仍延期。
 - 图片按 VNDB 分级字段默认模糊，不建立永久图片镜像。
 - UI 采用“视觉资料柜”方向；探索轨迹是首版标志性交互。
+- 图片用固定比例骨架、淡入、失败占位和详情图高优先级改善加载观感；路由级请求使用完整资料加载场景。
+- 中文 Tag 翻译本轮不接入，先保留 VNDB 英文原名，并为后续本地化层保留稳定 DTO。
+- VN 详情仅展示 `spoiler === 0` 且非 `ero` 的 Tag。
 
 ## Files/repos touched
 
-- `apps/api/`：VNDB adapter、API routes、SQLite cache、错误映射与测试。
-- `apps/web/`：搜索、VN/角色/staff 页面、分页、探索轨迹、响应式样式。
+- `apps/api/`：VNDB adapter、API routes、Tag endpoints、OpenAPI 3.1、SQLite cache、错误映射与测试。
+- `apps/web/`：搜索、VN/角色/staff/Tag 页面、自动预取、图片加载状态、探索轨迹、响应式样式。
 - `docs/mvp-spec.md`：用户行为与验收标准。
 - `docs/api-contract.md`：可供未来前端重写使用的 DTO/接口契约。
+- `docs/performance-tags-openapi-spec.md`：本轮性能观感、Tag 与 OpenAPI 的范围和验收标准。
 - `output/playwright/`：桌面与移动端真实页面截图。
 - GitHub：`Minyaako/gal-toolbox`。
 
@@ -51,15 +58,15 @@
 
 - 未部署线上实例。
 - 未实现 VNDB 登录、收藏、评分或用户列表。
-- 未实现中文 Tag/Trait、相似推荐和全局关系图布局。
-- 未生成 OpenAPI JSON；当前接口契约为 Markdown + TypeScript DTO。
+- 未实现中文 Tag/Trait 翻译、Trait 探索、相似推荐和全局关系图布局。
+- 未增加 Service Worker、图片代理/CDN 或持久化图片缓存。
 - 未添加代码许可证文件。
 
 ## Next actions
 
-1. 为 API 增加 OpenAPI schema 和 route integration tests。
-2. 把探索轨迹升级为可折叠的关系图视图，但保持当前卡片视图。
-3. 设计 Tag/Trait 本地化数据包接口，先不耦合具体翻译来源。
+1. 对比图片代理缩略图、Service Worker 缓存与 CDN 三种后续提速路径。
+2. 设计 VNDB Profile Search 中文 Tag 数据适配层，并保留英文回退。
+3. 把探索轨迹升级为可折叠的关系图视图，同时保留当前卡片视图。
 4. 确定大项目集成方式后再加入账号与个人数据层。
 
 ## Validation evidence
@@ -68,5 +75,5 @@
 - `npm.cmd test`：通过。
 - `npm.cmd run build`：通过。
 - `npm.cmd audit --audit-level=high`：0 vulnerabilities。
-- Playwright：桌面/移动页面完成真实导航，最终控制台 0 errors。
-
+- 真实 API：Tag 搜索、`g2380` 详情、Tag→VN 分页和 OpenAPI 3.1 均返回 200。
+- Playwright：Tag→VN→Tag、自动追加分页、桌面加载场景和 390×844 移动布局通过，最终控制台 0 errors。

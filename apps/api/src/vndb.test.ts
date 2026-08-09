@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanVndbText, resolvePersonName, resolveVnName } from "./vndb.js";
+import { cleanVndbText, mapTagSummary, resolvePersonName, resolveVnName } from "./vndb.js";
 
 describe("name resolution", () => {
   it("prefers simplified Chinese VN titles", () => {
@@ -27,5 +27,12 @@ describe("VNDB formatting", () => {
   it("keeps readable labels while removing formatting codes", () => {
     expect(cleanVndbText("From [url=https://example.com]Wikipedia[/url]"))
       .toBe("From Wikipedia");
+  });
+});
+
+describe("tag mapping", () => {
+  it("maps a VNDB tag into the shared entity shape", () => {
+    expect(mapTagSummary({ id: "g7", name: "Mystery", aliases: ["Mysteries"] }))
+      .toMatchObject({ id: "g7", type: "tag", name: { primary: "Mystery" }, image: null });
   });
 });

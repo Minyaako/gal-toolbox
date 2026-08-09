@@ -4,6 +4,7 @@ import { ExplorationTrail } from "./trail";
 import { CharacterPage } from "./pages/CharacterPage";
 import { SearchPage } from "./pages/SearchPage";
 import { StaffPage } from "./pages/StaffPage";
+import { TagPage } from "./pages/TagPage";
 import { VnPage } from "./pages/VnPage";
 
 function ScrollToTop() {
@@ -26,6 +27,7 @@ export function App() {
         </Link>
         <nav aria-label="主导航">
           <Link to="/">联想搜索</Link>
+          <a href="/api/docs" target="_blank" rel="noreferrer">API 文档 ↗</a>
           <a href="https://vndb.org/" target="_blank" rel="noreferrer">数据来源 VNDB ↗</a>
         </nav>
       </header>
@@ -35,6 +37,7 @@ export function App() {
           <Route path="/vn/:id" element={<VnPage />} />
           <Route path="/character/:id" element={<CharacterPage />} />
           <Route path="/staff/:id" element={<StaffPage />} />
+          <Route path="/tag/:id" element={<TagPage />} />
           <Route path="*" element={<SearchPage />} />
         </Routes>
       </main>

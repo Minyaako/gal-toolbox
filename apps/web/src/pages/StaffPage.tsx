@@ -2,7 +2,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { getStaff, getStaffCharacters } from "../api";
-import { EntityCard, LoadingGrid, NameBlock, SectionHeading, StatePanel } from "../components";
+import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
 
 export function StaffPage() {
@@ -21,7 +21,7 @@ export function StaffPage() {
     if (detail.data) visit(detail.data.entity);
   }, [detail.data, visit]);
 
-  if (detail.isPending) return <LoadingGrid />;
+  if (detail.isPending) return <LoadingScene title="正在打开声优资料" note="正在整理艺名与关联角色。" />;
   if (detail.isError) return <StatePanel title="声优资料加载失败" tone="error"><p>{detail.error.message}</p></StatePanel>;
 
   const staff = detail.data;
@@ -44,7 +44,7 @@ export function StaffPage() {
 
       <section className="detail-section">
         <SectionHeading index="01" title="配过的角色" note="图片来自角色立绘；VNDB 不提供声优本人照片。作品列表表示角色登场作品。" />
-        {roles.isPending ? <LoadingGrid /> : roles.isError ? (
+        {roles.isPending ? <LoadingScene compact title="正在整理角色卡" note="首批 12 个角色即将出现。" /> : roles.isError ? (
           <StatePanel title="角色关系加载失败" tone="error"><p>{roles.error.message}</p></StatePanel>
         ) : characters.length ? (
           <>
@@ -57,15 +57,15 @@ export function StaffPage() {
                 />
               ))}
             </div>
-            {roles.hasNextPage ? (
-              <button className="load-more" type="button" disabled={roles.isFetchingNextPage} onClick={() => roles.fetchNextPage()}>
-                {roles.isFetchingNextPage ? "正在取下一页…" : "加载更多角色"}
-              </button>
-            ) : null}
+            <AutoPageLoader
+              hasNextPage={roles.hasNextPage}
+              isFetching={roles.isFetchingNextPage}
+              onLoad={() => void roles.fetchNextPage()}
+              label="继续浏览角色"
+            />
           </>
         ) : <StatePanel title="暂无配音角色记录" />}
       </section>
     </article>
   );
 }
-

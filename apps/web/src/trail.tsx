@@ -76,7 +76,7 @@ export function ExplorationTrail() {
                 {entity.image ? (
                   <img src={entity.image.thumbnailUrl ?? entity.image.url} alt="" />
                 ) : (
-                  <span className="trail-fallback">{entity.name.primary.slice(0, 1)}</span>
+                  <span className="trail-fallback">{entity.type === "tag" ? "#" : entity.name.primary.slice(0, 1)}</span>
                 )}
                 <strong>{entity.name.primary}</strong>
               </Link>

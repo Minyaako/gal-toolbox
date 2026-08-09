@@ -7,15 +7,18 @@ import Fastify, {
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { CacheStore } from "./cache.js";
+import { openApiDocsHtml, openApiDocument } from "./openapi.js";
 import type { EntitySummary, EntityType } from "./types.js";
 import {
   cleanVndbText,
   fields,
   mapCharacterSummary,
   mapStaffSummary,
+  mapTagSummary,
   mapVnSummary,
   type RawCharacter,
   type RawStaff,
+  type RawTag,
   type RawVn,
   VndbClient,
   VndbError,
@@ -42,6 +45,7 @@ type RawVnDetail = RawVn & {
     character: RawCharacter;
     staff: RawStaff;
   }>;
+  tags?: Array<RawTag & { rating: number; spoiler: number }>;
 };
 
 type RawCharacterDetail = RawCharacter & {
@@ -55,6 +59,10 @@ type RawStaffDetail = RawStaff & {
   extlinks?: Array<{ url: string; label: string }>;
 };
 
+type RawTagDetail = RawTag & {
+  description?: string | null;
+};
+
 function setCacheHeader(reply: FastifyReply, status: string): void {
   reply.header("X-Cache", status);
 }
@@ -64,7 +72,7 @@ function parsePage(query: Record<string, unknown>): {
   pageSize: number;
 } {
   const page = Number(query.page ?? 1);
-  const pageSize = Number(query.pageSize ?? 20);
+  const pageSize = Number(query.pageSize ?? 12);
   if (!Number.isInteger(page) || page < 1) throw new Error("Invalid page");
   if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50) {
     throw new Error("Invalid pageSize");
@@ -72,7 +80,7 @@ function parsePage(query: Record<string, unknown>): {
   return { page, pageSize };
 }
 
-function validateId(value: string, prefix: "v" | "c" | "s"): void {
+function validateId(value: string, prefix: "v" | "c" | "s" | "g"): void {
   if (!new RegExp(`^${prefix}\\d+$`).test(value)) throw new Error("Invalid id");
 }
 
@@ -93,6 +101,15 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     origin: process.env.NODE_ENV === "production" ? false : true,
   });
 
+  app.get("/api/v1/openapi.json", async (_request, reply) => {
+    reply.header("Cache-Control", "public, max-age=3600");
+    return openApiDocument;
+  });
+
+  app.get("/api/docs", async (_request, reply) => {
+    return reply.type("text/html; charset=utf-8").send(openApiDocsHtml());
+  });
+
   app.get("/api/v1/health", async () => ({
     status: "ok",
     cache: "sqlite",
@@ -103,20 +120,22 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     const query = request.query as Record<string, unknown>;
     const type = query.type as EntityType;
     const term = String(query.q ?? "").trim();
-    if (!["vn", "character", "staff"].includes(type)) {
+    if (!["vn", "character", "staff", "tag"].includes(type)) {
       throw new Error("Invalid entity type");
     }
     if (term.length < 1 || term.length > 120) throw new Error("Invalid query");
     const { page, pageSize } = parsePage(query);
 
-    const endpoint = type === "vn" ? "/vn" : `/${type}`;
+    const endpoint = type === "vn" ? "/vn" : type === "tag" ? "/tag" : `/${type}`;
     const selectedFields =
       type === "vn"
         ? fields.vnSummary
         : type === "character"
           ? fields.characterSummary
-          : fields.staffSummary;
-    const result = await client.query<RawVn | RawCharacter | RawStaff>(
+          : type === "staff"
+            ? fields.staffSummary
+            : fields.tagSummary;
+    const result = await client.query<RawVn | RawCharacter | RawStaff | RawTag>(
       endpoint,
       {
         filters: ["search", "=", term],
@@ -134,7 +153,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         ? mapVnSummary(item as RawVn)
         : type === "character"
           ? mapCharacterSummary(item as RawCharacter)
-          : mapStaffSummary(item as RawStaff),
+          : type === "staff"
+            ? mapStaffSummary(item as RawStaff)
+            : mapTagSummary(item as RawTag),
     );
     return {
       items: type === "staff" ? dedupe(mapped) : mapped,
@@ -155,6 +176,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
           "description,released,rating,votecount",
           `relations{relation,${fields.vnSummary}}`,
           `va{note,staff{${fields.staffSummary}},character{${fields.characterSummary}}}`,
+          "tags{rating,spoiler,name,category}",
         ].join(","),
         results: 1,
       },
@@ -178,6 +200,14 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         staff: mapStaffSummary(item.staff),
         note: item.note ?? null,
       })),
+      tags: (vn.tags ?? [])
+        .map((tag) => ({
+          tag: mapTagSummary(tag),
+          rating: tag.rating,
+          spoiler: tag.spoiler,
+          category: tag.category ?? null,
+        }))
+        .sort((left, right) => right.rating - left.rating),
     };
   });
 
@@ -251,6 +281,56 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
           role: vn.role,
         })),
       })),
+      page,
+      pageSize,
+      more: result.data.more,
+    };
+  });
+
+  app.get<{ Params: { id: string } }>("/api/v1/tags/:id", async (request, reply) => {
+    validateId(request.params.id, "g");
+    const result = await client.query<RawTagDetail>(
+      "/tag",
+      {
+        filters: ["id", "=", request.params.id],
+        fields: `${fields.tagSummary},description`,
+        results: 1,
+      },
+      ENTITY_TTL,
+    );
+    setCacheHeader(reply, result.cacheStatus);
+    const tag = result.data.results[0];
+    if (!tag) {
+      return reply.code(404).send({
+        error: { code: "NOT_FOUND", message: "未找到该 Tag。", requestId: request.id },
+      });
+    }
+    return {
+      entity: mapTagSummary(tag),
+      description: cleanVndbText(tag.description),
+      category: tag.category ?? null,
+      vnCount: tag.vn_count ?? 0,
+    };
+  });
+
+  app.get<{ Params: { id: string } }>("/api/v1/tags/:id/vns", async (request, reply) => {
+    validateId(request.params.id, "g");
+    const { page, pageSize } = parsePage(request.query as Record<string, unknown>);
+    const result = await client.query<RawVn>(
+      "/vn",
+      {
+        filters: ["tag", "=", request.params.id],
+        fields: fields.vnSummary,
+        sort: "rating",
+        reverse: true,
+        results: pageSize,
+        page,
+      },
+      RELATION_TTL,
+    );
+    setCacheHeader(reply, result.cacheStatus);
+    return {
+      items: result.data.results.map(mapVnSummary),
       page,
       pageSize,
       more: result.data.more,

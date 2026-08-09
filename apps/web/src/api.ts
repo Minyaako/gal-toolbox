@@ -1,4 +1,4 @@
-export type EntityType = "vn" | "character" | "staff";
+export type EntityType = "vn" | "character" | "staff" | "tag";
 
 export type EntityName = {
   primary: string;
@@ -40,6 +40,12 @@ export type VnDetail = {
     staff: EntitySummary;
     note: string | null;
   }>;
+  tags: Array<{
+    tag: EntitySummary;
+    rating: number;
+    spoiler: number;
+    category: "cont" | "ero" | "tech" | null;
+  }>;
 };
 
 export type CharacterDetail = {
@@ -62,6 +68,13 @@ export type StaffDetail = {
 export type StaffCharacter = {
   character: EntitySummary;
   appearances: CharacterDetail["appearances"];
+};
+
+export type TagDetail = {
+  entity: EntitySummary;
+  description: string | null;
+  category: "cont" | "ero" | "tech" | null;
+  vnCount: number;
 };
 
 type ApiErrorBody = {
@@ -99,7 +112,7 @@ export const getSearchPage = (
   type: EntityType,
   query: string,
   page: number,
-  pageSize = 18,
+  pageSize = 12,
 ) =>
   api<Page<EntitySummary>>(
     `/search?type=${type}&q=${encodeURIComponent(query)}&page=${page}&pageSize=${pageSize}`,
@@ -109,14 +122,17 @@ export const getVn = (id: string) => api<VnDetail>(`/vns/${id}`);
 export const getCharacter = (id: string) =>
   api<CharacterDetail>(`/characters/${id}`);
 export const getStaff = (id: string) => api<StaffDetail>(`/staff/${id}`);
-export const getStaffCharacters = (id: string, page: number, pageSize = 18) =>
+export const getStaffCharacters = (id: string, page: number, pageSize = 12) =>
   api<Page<StaffCharacter>>(
     `/staff/${id}/characters?page=${page}&pageSize=${pageSize}`,
   );
+export const getTag = (id: string) => api<TagDetail>(`/tags/${id}`);
+export const getTagVns = (id: string, page: number, pageSize = 12) =>
+  api<Page<EntitySummary>>(`/tags/${id}/vns?page=${page}&pageSize=${pageSize}`);
 
 export function entityPath(entity: Pick<EntitySummary, "id" | "type">): string {
   if (entity.type === "vn") return `/vn/${entity.id}`;
   if (entity.type === "character") return `/character/${entity.id}`;
-  return `/staff/${entity.id}`;
+  if (entity.type === "staff") return `/staff/${entity.id}`;
+  return `/tag/${entity.id}`;
 }
-

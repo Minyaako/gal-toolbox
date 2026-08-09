@@ -154,6 +154,15 @@ export type RawStaff = {
   }>;
 };
 
+export type RawTag = {
+  id: string;
+  name: string;
+  aliases?: string[];
+  description?: string | null;
+  category?: "cont" | "ero" | "tech";
+  vn_count?: number;
+};
+
 function unique(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value?.trim())))];
 }
@@ -234,6 +243,20 @@ export function mapStaffSummary(staff: RawStaff): EntitySummary {
   };
 }
 
+export function mapTagSummary(tag: RawTag): EntitySummary {
+  return {
+    id: tag.id,
+    type: "tag",
+    name: {
+      primary: tag.name,
+      original: null,
+      romanized: null,
+      alternatives: unique(tag.aliases ?? []).filter((value) => value !== tag.name),
+    },
+    image: null,
+  };
+}
+
 export function cleanVndbText(value: string | null | undefined): string | null {
   if (!value) return null;
   return value
@@ -248,4 +271,5 @@ export const fields = {
     "title,alttitle,titles{lang,title,latin,main},aliases,image{url,thumbnail,sexual,violence}",
   characterSummary: "name,original,aliases,image{url,sexual,violence}",
   staffSummary: "name,original,aliases{name,latin,ismain}",
+  tagSummary: "name,aliases,category,vn_count",
 } as const;
