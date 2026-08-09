@@ -1,0 +1,19 @@
+{
+  "name": "gal-toolbox",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @gal-toolbox/api\" \"npm run dev -w @gal-toolbox/web\"",
+    "build": "npm run build -w @gal-toolbox/web && npm run build -w @gal-toolbox/api",
+    "typecheck": "npm run typecheck -w @gal-toolbox/api && npm run typecheck -w @gal-toolbox/web",
+    "test": "npm run test -w @gal-toolbox/api && npm run test -w @gal-toolbox/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
+

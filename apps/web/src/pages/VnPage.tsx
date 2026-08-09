@@ -1,0 +1,81 @@
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { Link, useParams } from "react-router-dom";
+import { entityPath, getVn } from "../api";
+import { EntityCard, EntityImage, LoadingGrid, NameBlock, SectionHeading, StatePanel } from "../components";
+import { useTrail } from "../trail";
+
+const relationLabels: Record<string, string> = {
+  ser: "同系列",
+  seq: "续作",
+  preq: "前作",
+  set: "同设定",
+  alt: "替代版本",
+  char: "共享角色",
+  side: "外传",
+  par: "母作品",
+  orig: "原作",
+  fan: "衍生作品",
+};
+
+export function VnPage() {
+  const { id = "" } = useParams();
+  const query = useQuery({ queryKey: ["vn", id], queryFn: () => getVn(id), enabled: Boolean(id) });
+  const { visit } = useTrail();
+
+  useEffect(() => {
+    if (query.data) visit(query.data.entity);
+  }, [query.data, visit]);
+
+  if (query.isPending) return <LoadingGrid />;
+  if (query.isError) return <StatePanel title="作品资料加载失败" tone="error"><p>{query.error.message}</p></StatePanel>;
+
+  const vn = query.data;
+  return (
+    <article className="detail-page">
+      <header className="detail-hero">
+        <EntityImage image={vn.entity.image} alt={vn.entity.name.primary} className="detail-cover" />
+        <div className="detail-intro">
+          <div className="record-id">VNDB / {vn.entity.id}</div>
+          <NameBlock entity={vn.entity} />
+          <dl className="fact-strip">
+            <div><dt>发售</dt><dd>{vn.released ?? "未知"}</dd></div>
+            <div><dt>评分</dt><dd>{vn.rating ? (vn.rating / 10).toFixed(2) : "—"}</dd></div>
+            <div><dt>票数</dt><dd>{vn.voteCount.toLocaleString()}</dd></div>
+          </dl>
+          {vn.description ? <p className="description">{vn.description}</p> : <p className="description is-muted">暂无简介。</p>}
+        </div>
+      </header>
+
+      <section className="detail-section">
+        <SectionHeading index="01" title="角色与声优" note="点击任意一侧都可以继续探索。" />
+        {vn.cast.length ? (
+          <div className="cast-list">
+            {vn.cast.map((pair, index) => (
+              <article className="cast-pair" key={`${pair.character.id}-${pair.staff.id}-${index}`}>
+                <Link className="cast-person character" to={entityPath(pair.character)} aria-label={`打开角色：${pair.character.name.primary}`}>
+                  <EntityImage image={pair.character.image} alt="" />
+                  <span><b>{pair.character.name.primary}</b><small>{pair.character.name.romanized}</small></span>
+                </Link>
+                <div className="voice-link"><span>配音</span><i aria-hidden="true">→</i></div>
+                <Link className="cast-person staff" to={entityPath(pair.staff)} aria-label={`打开声优：${pair.staff.name.primary}`}>
+                  <span className="staff-monogram">{pair.staff.name.primary.slice(0, 1)}</span>
+                  <span><b>{pair.staff.name.primary}</b><small>{pair.staff.name.romanized}</small></span>
+                </Link>
+              </article>
+            ))}
+          </div>
+        ) : <StatePanel title="该作品暂无配音关系" />}
+      </section>
+
+      {vn.relations.length ? (
+        <section className="detail-section">
+          <SectionHeading index="02" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
+          <div className="entity-grid compact-grid">
+            {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} />)}
+          </div>
+        </section>
+      ) : null}
+    </article>
+  );
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+coverage/
+*.log
+.env
+.playwright-cli/
+data/*.sqlite
+data/*.sqlite-*
+apps/api/data/
