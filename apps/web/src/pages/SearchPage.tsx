@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getSearchPage, type EntityType } from "../api";
+import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, SectionHeading, StatePanel } from "../components";
 
 const tabs: Array<{ value: EntityType; label: string; hint: string }> = [
@@ -24,6 +25,13 @@ export function SearchPage() {
     getNextPageParam: (lastPage) => (lastPage.more ? lastPage.page + 1 : undefined),
     enabled: Boolean(query),
   });
+  const buffered = useBufferedPages({
+    scope: `search:${type}:${query}`,
+    pages: search.data?.pages ?? [],
+    hasNextPage: search.hasNextPage,
+    isFetchingNextPage: search.isFetchingNextPage,
+    fetchNextPage: search.fetchNextPage,
+  });
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -35,7 +43,7 @@ export function SearchPage() {
     setParams(query ? { type: next, q: query } : { type: next });
   }
 
-  const items = search.data?.pages.flatMap((page) => page.items) ?? [];
+  const items = buffered.items;
 
   return (
     <>
@@ -96,10 +104,11 @@ export function SearchPage() {
               {items.map((entity) => <EntityCard key={entity.id} entity={entity} />)}
             </div>
             <AutoPageLoader
-              hasNextPage={search.hasNextPage}
-              isFetching={search.isFetchingNextPage}
-              onLoad={() => void search.fetchNextPage()}
-              label="继续浏览搜索结果"
+              hasNextPage={buffered.canRevealNextPage}
+              isFetching={buffered.isWaitingForBuffer}
+              buffered={buffered.hasBufferedPage}
+              onLoad={() => void buffered.revealNextPage()}
+              label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览搜索结果"}
             />
           </>
         ) : (

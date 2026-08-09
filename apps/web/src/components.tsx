@@ -189,11 +189,13 @@ export function LoadingScene({
 export function AutoPageLoader({
   hasNextPage,
   isFetching,
+  buffered = false,
   onLoad,
   label = "继续加载",
 }: {
   hasNextPage: boolean;
   isFetching: boolean;
+  buffered?: boolean;
   onLoad: () => void;
   label?: string;
 }) {
@@ -214,7 +216,7 @@ export function AutoPageLoader({
 
   if (!hasNextPage) return null;
   return (
-    <div className={`auto-page-loader ${isFetching ? "is-fetching" : ""}`} ref={sentinelRef}>
+    <div className={`auto-page-loader ${isFetching ? "is-fetching" : ""} ${buffered ? "is-buffered" : ""}`} ref={sentinelRef}>
       <span aria-hidden="true"><i /><i /><i /></span>
       <button type="button" disabled={isFetching} onClick={onLoad}>
         {isFetching ? "正在准备下一页…" : label}

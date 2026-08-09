@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
 import { tagQuery, tagVnsQuery } from "../queries";
@@ -18,6 +19,13 @@ export function TagPage() {
     ...tagVnsQuery(id),
     enabled: Boolean(id),
   });
+  const buffered = useBufferedPages({
+    scope: `tag:${id}`,
+    pages: novels.data?.pages ?? [],
+    hasNextPage: novels.hasNextPage,
+    isFetchingNextPage: novels.isFetchingNextPage,
+    fetchNextPage: novels.fetchNextPage,
+  });
   const { visit } = useTrail();
 
   useEffect(() => {
@@ -28,7 +36,7 @@ export function TagPage() {
   if (detail.isError) return <StatePanel title="Tag 资料加载失败" tone="error"><p>{detail.error.message}</p></StatePanel>;
 
   const tag = detail.data;
-  const items = novels.data?.pages.flatMap((page) => page.items) ?? [];
+  const items = buffered.items;
   return (
     <article className="detail-page tag-page">
       <header className="staff-hero tag-hero">
@@ -52,10 +60,11 @@ export function TagPage() {
           <>
             <div className="entity-grid">{items.map((vn) => <EntityCard key={vn.id} entity={vn} />)}</div>
             <AutoPageLoader
-              hasNextPage={novels.hasNextPage}
-              isFetching={novels.isFetchingNextPage}
-              onLoad={() => void novels.fetchNextPage()}
-              label="继续浏览相关作品"
+              hasNextPage={buffered.canRevealNextPage}
+              isFetching={buffered.isWaitingForBuffer}
+              buffered={buffered.hasBufferedPage}
+              onLoad={() => void buffered.revealNextPage()}
+              label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览相关作品"}
             />
           </>
         ) : <StatePanel title="暂无相关作品" />}

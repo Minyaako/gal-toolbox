@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
 import { staffCharactersQuery, staffQuery } from "../queries";
@@ -12,6 +13,13 @@ export function StaffPage() {
     ...staffCharactersQuery(id),
     enabled: Boolean(id),
   });
+  const buffered = useBufferedPages({
+    scope: `staff:${id}`,
+    pages: roles.data?.pages ?? [],
+    hasNextPage: roles.hasNextPage,
+    isFetchingNextPage: roles.isFetchingNextPage,
+    fetchNextPage: roles.fetchNextPage,
+  });
   const { visit } = useTrail();
 
   useEffect(() => {
@@ -22,7 +30,7 @@ export function StaffPage() {
   if (detail.isError) return <StatePanel title="声优资料加载失败" tone="error"><p>{detail.error.message}</p></StatePanel>;
 
   const staff = detail.data;
-  const characters = roles.data?.pages.flatMap((page) => page.items) ?? [];
+  const characters = buffered.items;
   return (
     <article className="detail-page">
       <header className="staff-hero">
@@ -55,10 +63,11 @@ export function StaffPage() {
               ))}
             </div>
             <AutoPageLoader
-              hasNextPage={roles.hasNextPage}
-              isFetching={roles.isFetchingNextPage}
-              onLoad={() => void roles.fetchNextPage()}
-              label="继续浏览角色"
+              hasNextPage={buffered.canRevealNextPage}
+              isFetching={buffered.isWaitingForBuffer}
+              buffered={buffered.hasBufferedPage}
+              onLoad={() => void buffered.revealNextPage()}
+              label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览角色"}
             />
           </>
         ) : <StatePanel title="暂无配音角色记录" />}
