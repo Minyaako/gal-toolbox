@@ -5,6 +5,7 @@ import { entityPath } from "../api";
 import { EntityCard, EntityImage, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
 import { vnQuery } from "../queries";
+import { getSecondaryName } from "../tag-label";
 
 const relationLabels: Record<string, string> = {
   ser: "同系列",
@@ -71,16 +72,28 @@ export function VnPage() {
 
       {vn.tags.some((item) => item.spoiler === 0 && item.category !== "ero") ? (
         <section className="detail-section tag-section">
-          <SectionHeading index="02" title="继续沿 Tag 探索" note="首版使用 VNDB 原始 Tag；中文翻译层将在后续接入。" />
+          <SectionHeading index="02" title="继续沿 Tag 探索" note="中文来自 VNDB Profile Search，英文保留用于定位。" />
           <div className="tag-cloud">
             {vn.tags
               .filter((item) => item.spoiler === 0 && item.category !== "ero")
               .slice(0, 24)
-              .map((item) => (
-                <Link key={item.tag.id} to={entityPath(item.tag)}>
-                  <span>#</span>{item.tag.name.primary}<small>{item.rating.toFixed(1)}</small>
-                </Link>
-              ))}
+              .map((item) => {
+                const secondary = getSecondaryName(item.tag.name);
+                return (
+                  <Link
+                    key={item.tag.id}
+                    to={entityPath(item.tag)}
+                    aria-label={secondary ? `${item.tag.name.primary}，${secondary}` : item.tag.name.primary}
+                  >
+                    <span className="tag-mark">#</span>
+                    <span className="tag-name">
+                      <b>{item.tag.name.primary}</b>
+                      {secondary ? <em lang="en">{secondary}</em> : null}
+                    </span>
+                    <small>{item.rating.toFixed(1)}</small>
+                  </Link>
+                );
+              })}
           </div>
         </section>
       ) : null}

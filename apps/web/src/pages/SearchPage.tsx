@@ -9,7 +9,7 @@ const tabs: Array<{ value: EntityType; label: string; hint: string }> = [
   { value: "vn", label: "作品", hint: "标题、别名或 VNDB ID" },
   { value: "character", label: "角色", hint: "角色原名、罗马字或 ID" },
   { value: "staff", label: "声优", hint: "本名、艺名或 staff ID" },
-  { value: "tag", label: "Tag", hint: "题材、内容或技术标签" },
+  { value: "tag", label: "Tag", hint: "中文或英文题材、内容与技术标签" },
 ];
 
 export function SearchPage() {
@@ -72,7 +72,13 @@ export function SearchPage() {
               id="knowledge-search"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder={type === "vn" ? "试试 Ever17、时空轮回或 v17" : "输入名称或 VNDB ID"}
+              placeholder={
+                type === "vn"
+                  ? "试试 Ever17、时空轮回或 v17"
+                  : type === "tag"
+                    ? "试试 悬疑、时间旅行或 g19"
+                    : "输入名称或 VNDB ID"
+              }
               autoComplete="off"
             />
             <button type="submit">开始查找</button>

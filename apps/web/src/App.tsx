@@ -45,6 +45,9 @@ export function App() {
       <footer className="site-footer">
         <span>Gal 百宝箱 / MVP 0.1</span>
         <span>非商业验证项目 · 数据来自 VNDB</span>
+        <a href="https://github.com/JodieRuth/VNDB-Profile-Search" target="_blank" rel="noreferrer">
+          Tag 中文：VNDB Profile Search ↗
+        </a>
       </footer>
     </div>
   );

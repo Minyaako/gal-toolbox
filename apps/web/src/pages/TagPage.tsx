@@ -53,7 +53,7 @@ export function TagPage() {
       </header>
 
       <section className="detail-section">
-        <SectionHeading index="01" title="带有此 Tag 的作品" note="按 VNDB 评分优先，接近页尾时自动准备下一批。" />
+        <SectionHeading index="01" title="带有此 Tag 的作品" note="中文来自 VNDB Profile Search；按 VNDB 评分优先，后台始终多准备一页。" />
         {novels.isPending ? <LoadingScene compact title="正在整理作品卡" /> : novels.isError ? (
           <StatePanel title="关联作品加载失败" tone="error"><p>{novels.error.message}</p></StatePanel>
         ) : items.length ? (

@@ -386,7 +386,10 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 9px; }
 .tag-cloud a { display: inline-flex; min-height: 42px; align-items: center; gap: 8px; padding: 7px 12px; border: 1px solid var(--line); background: var(--surface); text-decoration: none; transition: border-color var(--dur-1), transform var(--dur-1); }
 .tag-cloud a:hover { border-color: var(--accent); transform: translateY(-2px); }
-.tag-cloud a > span { color: var(--accent); font-family: var(--font-mono); }
+.tag-cloud .tag-mark { color: var(--accent); font-family: var(--font-mono); }
+.tag-cloud .tag-name { display: grid; line-height: 1.15; }
+.tag-cloud .tag-name b { font-weight: 650; }
+.tag-cloud .tag-name em { max-width: 25ch; overflow: hidden; color: var(--muted); font-size: .68rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .tag-cloud a small { color: var(--muted); font-family: var(--font-mono); }
 .tag-glyph { background: var(--success); }
 
@@ -420,6 +423,7 @@ button:disabled { cursor: wait; opacity: 0.65; }
   font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
+.site-footer a { color: inherit; text-underline-offset: 4px; }
 
 @media (max-width: 760px) {
   .site-header { align-items: flex-start; padding: 12px 18px; }
