@@ -684,20 +684,20 @@ Record:
 - Commands and browser evidence.
 - Remaining work: real-user performance measurement, Service Worker/image proxy evaluation, and Trait localization.
 
-- [ ] **Step 7: Commit verification documentation**
+- [x] **Step 7: Commit verification documentation**
 
 ```powershell
 git add docs/project-summary.md docs/superpowers/plans/2026-08-10-buffered-prefetch-chinese-tags.md
 git commit -m "docs: record prefetch and localization validation"
 ```
 
-- [ ] **Step 8: Push and restore GitHub account**
+- [x] **Step 8: Push and restore GitHub account**
 
-Switch to `Minyaako`, push `main`, and restore `li8034` even if push fails:
+Switch to `Minyaako`, push the long-lived `dev` branch, and restore `li8034` even if push fails:
 
 ```powershell
 gh auth switch -u Minyaako
-try { git push origin main } finally { gh auth switch -u li8034 }
+try { git push -u origin dev } finally { gh auth switch -u li8034 }
 ```
 
 Confirm `git status --short` is empty and the remote contains the final commit.
