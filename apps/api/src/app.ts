@@ -8,6 +8,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import type { CacheStore } from "./cache.js";
 import { openApiDocsHtml, openApiDocument } from "./openapi.js";
+import { searchLocalizedTags } from "./tag-localization.js";
 import type { EntitySummary, EntityType } from "./types.js";
 import {
   cleanVndbText,
@@ -65,6 +66,14 @@ type RawTagDetail = RawTag & {
 
 function setCacheHeader(reply: FastifyReply, status: string): void {
   reply.header("X-Cache", status);
+}
+
+function setPublicCache(reply: FastifyReply, seconds: number): void {
+  reply.header("Cache-Control", `public, max-age=${seconds}`);
+}
+
+function containsHan(value: string): boolean {
+  return /[\u3400-\u9fff]/u.test(value);
 }
 
 function parsePage(query: Record<string, unknown>): {
@@ -126,6 +135,21 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     if (term.length < 1 || term.length > 120) throw new Error("Invalid query");
     const { page, pageSize } = parsePage(query);
 
+    if (type === "tag" && containsHan(term)) {
+      const matches = searchLocalizedTags(term);
+      const offset = (page - 1) * pageSize;
+      setCacheHeader(reply, "LOCAL");
+      setPublicCache(reply, 60);
+      return {
+        items: matches.slice(offset, offset + pageSize).map((tag) =>
+          mapTagSummary({ id: tag.id, name: tag.en }),
+        ),
+        page,
+        pageSize,
+        more: offset + pageSize < matches.length,
+      };
+    }
+
     const endpoint = type === "vn" ? "/vn" : type === "tag" ? "/tag" : `/${type}`;
     const selectedFields =
       type === "vn"
@@ -147,6 +171,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       SEARCH_TTL,
     );
     setCacheHeader(reply, result.cacheStatus);
+    setPublicCache(reply, 60);
 
     const mapped = result.data.results.map((item) =>
       type === "vn"
@@ -183,6 +208,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       RELATION_TTL,
     );
     setCacheHeader(reply, result.cacheStatus);
+    setPublicCache(reply, 300);
     const vn = result.data.results[0];
     if (!vn) return reply.code(404).send({ error: { code: "NOT_FOUND", message: "未找到该作品。", requestId: request.id } });
     return {
@@ -223,6 +249,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       ENTITY_TTL,
     );
     setCacheHeader(reply, result.cacheStatus);
+    setPublicCache(reply, 300);
     const character = result.data.results[0];
     if (!character) return reply.code(404).send({ error: { code: "NOT_FOUND", message: "未找到该角色。", requestId: request.id } });
     return {
@@ -247,6 +274,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       ENTITY_TTL,
     );
     setCacheHeader(reply, result.cacheStatus);
+    setPublicCache(reply, 300);
     const staff = result.data.results[0];
     if (!staff) return reply.code(404).send({ error: { code: "NOT_FOUND", message: "未找到该声优或制作人员。", requestId: request.id } });
     return {
@@ -273,6 +301,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       RELATION_TTL,
     );
     setCacheHeader(reply, result.cacheStatus);
+    setPublicCache(reply, 60);
     return {
       items: result.data.results.map((character) => ({
         character: mapCharacterSummary(character),
@@ -299,6 +328,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       ENTITY_TTL,
     );
     setCacheHeader(reply, result.cacheStatus);
+    setPublicCache(reply, 300);
     const tag = result.data.results[0];
     if (!tag) {
       return reply.code(404).send({
@@ -329,6 +359,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       RELATION_TTL,
     );
     setCacheHeader(reply, result.cacheStatus);
+    setPublicCache(reply, 60);
     return {
       items: result.data.results.map(mapVnSummary),
       page,
