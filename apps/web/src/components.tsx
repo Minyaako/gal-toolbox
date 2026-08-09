@@ -8,6 +8,7 @@ import {
   type EntitySummary,
   type EntityType,
 } from "./api";
+import { advanceIntersectionLatch } from "./buffered-pages";
 import { prefetchEntity } from "./queries";
 
 const labels: Record<EntityType, string> = {
@@ -200,13 +201,20 @@ export function AutoPageLoader({
   label?: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const autoLoadArmedRef = useRef(true);
 
   useEffect(() => {
     const target = sentinelRef.current;
     if (!target || !hasNextPage || isFetching) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) onLoad();
+        if (!entry) return;
+        const next = advanceIntersectionLatch(
+          autoLoadArmedRef.current,
+          entry.isIntersecting,
+        );
+        autoLoadArmedRef.current = next.armed;
+        if (next.shouldLoad) onLoad();
       },
       { rootMargin: "600px 0px" },
     );

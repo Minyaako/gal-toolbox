@@ -62,6 +62,15 @@ export function shouldFetchBuffer({
   );
 }
 
+export function advanceIntersectionLatch(
+  armed: boolean,
+  isIntersecting: boolean,
+): { armed: boolean; shouldLoad: boolean } {
+  if (!isIntersecting) return { armed: true, shouldLoad: false };
+  if (!armed) return { armed: false, shouldLoad: false };
+  return { armed: false, shouldLoad: true };
+}
+
 type FetchNextPageResult<T> = {
   data?: { pages: Array<Page<T>> };
 };

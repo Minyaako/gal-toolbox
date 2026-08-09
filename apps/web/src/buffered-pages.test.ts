@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Page } from "./api";
 import {
+  advanceIntersectionLatch,
   hasBufferedPage,
   reduceBufferedPage,
   selectVisibleItems,
@@ -64,5 +65,16 @@ describe("buffered pagination state", () => {
         isFetchingNextPage: false,
       }),
     ).toBe(false);
+  });
+
+  it("requires leaving the trigger zone before another automatic reveal", () => {
+    let armed = true;
+    const loads: boolean[] = [];
+    for (const isIntersecting of [true, true, true, false, true]) {
+      const next = advanceIntersectionLatch(armed, isIntersecting);
+      armed = next.armed;
+      loads.push(next.shouldLoad);
+    }
+    expect(loads).toEqual([true, false, false, false, true]);
   });
 });
