@@ -1,15 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getCharacter } from "../api";
 import { EntityCard, EntityImage, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
+import { characterQuery } from "../queries";
 
 const roleLabels = { main: "主人公", primary: "主要角色", side: "配角", appears: "登场" };
 
 export function CharacterPage() {
   const { id = "" } = useParams();
-  const query = useQuery({ queryKey: ["character", id], queryFn: () => getCharacter(id), enabled: Boolean(id) });
+  const query = useQuery({ ...characterQuery(id), enabled: Boolean(id) });
   const { visit } = useTrail();
 
   useEffect(() => {

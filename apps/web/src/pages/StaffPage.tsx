@@ -1,18 +1,15 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getStaff, getStaffCharacters } from "../api";
 import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
+import { staffCharactersQuery, staffQuery } from "../queries";
 
 export function StaffPage() {
   const { id = "" } = useParams();
-  const detail = useQuery({ queryKey: ["staff", id], queryFn: () => getStaff(id), enabled: Boolean(id) });
+  const detail = useQuery({ ...staffQuery(id), enabled: Boolean(id) });
   const roles = useInfiniteQuery({
-    queryKey: ["staff-characters", id],
-    queryFn: ({ pageParam }) => getStaffCharacters(id, pageParam),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => (lastPage.more ? lastPage.page + 1 : undefined),
+    ...staffCharactersQuery(id),
     enabled: Boolean(id),
   });
   const { visit } = useTrail();

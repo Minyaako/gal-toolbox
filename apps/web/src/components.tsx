@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -7,6 +8,7 @@ import {
   type EntitySummary,
   type EntityType,
 } from "./api";
+import { prefetchEntity } from "./queries";
 
 const labels: Record<EntityType, string> = {
   vn: "作品",
@@ -85,9 +87,21 @@ export function EntityCard({
   entity: EntitySummary;
   meta?: ReactNode;
 }) {
+  const queryClient = useQueryClient();
+  const prefetch = () => {
+    void prefetchEntity(queryClient, entity);
+  };
+
   return (
     <article className={`entity-card entity-${entity.type}`}>
-      <Link to={entityPath(entity)} className="card-link" aria-label={`打开${labels[entity.type]}：${entity.name.primary}`}>
+      <Link
+        to={entityPath(entity)}
+        className="card-link"
+        aria-label={`打开${labels[entity.type]}：${entity.name.primary}`}
+        onPointerEnter={prefetch}
+        onFocus={prefetch}
+        onPointerDown={prefetch}
+      >
         <EntityImage
           image={entity.image}
           alt={entity.name.primary}

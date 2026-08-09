@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
-import { entityPath, getVn } from "../api";
+import { entityPath } from "../api";
 import { EntityCard, EntityImage, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
+import { vnQuery } from "../queries";
 
 const relationLabels: Record<string, string> = {
   ser: "同系列",
@@ -20,7 +21,7 @@ const relationLabels: Record<string, string> = {
 
 export function VnPage() {
   const { id = "" } = useParams();
-  const query = useQuery({ queryKey: ["vn", id], queryFn: () => getVn(id), enabled: Boolean(id) });
+  const query = useQuery({ ...vnQuery(id), enabled: Boolean(id) });
   const { visit } = useTrail();
 
   useEffect(() => {

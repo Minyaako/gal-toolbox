@@ -1,9 +1,9 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getTag, getTagVns } from "../api";
 import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
+import { tagQuery, tagVnsQuery } from "../queries";
 
 const categoryLabels = {
   cont: "内容 Tag",
@@ -13,12 +13,9 @@ const categoryLabels = {
 
 export function TagPage() {
   const { id = "" } = useParams();
-  const detail = useQuery({ queryKey: ["tag", id], queryFn: () => getTag(id), enabled: Boolean(id) });
+  const detail = useQuery({ ...tagQuery(id), enabled: Boolean(id) });
   const novels = useInfiniteQuery({
-    queryKey: ["tag-vns", id],
-    queryFn: ({ pageParam }) => getTagVns(id, pageParam),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => (lastPage.more ? lastPage.page + 1 : undefined),
+    ...tagVnsQuery(id),
     enabled: Boolean(id),
   });
   const { visit } = useTrail();
