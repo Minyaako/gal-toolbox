@@ -7,8 +7,11 @@ import { appRoutes } from "./routes";
 import { SettingsProvider } from "./settings";
 import {
   RouteTransition,
+  isSameDocumentNavigation,
   reduceTransition,
+  routeTargetIsReady,
   routeLoadingLabel,
+  transitionOverlayStyle,
   transitionTiming,
 } from "./RouteTransition";
 
@@ -37,6 +40,48 @@ describe("route transition state", () => {
       revealMs: 0,
       layerDelayMs: 0,
     });
+  });
+
+  it("reveals a cached target while its stale data refetches in the background", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["vn", "v17"], { id: "v17", title: "Cached title" });
+    let resolveRefetch!: (value: { id: string; title: string }) => void;
+    const refetch = queryClient.fetchQuery({
+      queryKey: ["vn", "v17"],
+      queryFn: () => new Promise((resolve) => {
+        resolveRefetch = resolve;
+      }),
+      staleTime: 0,
+    });
+
+    expect(queryClient.isFetching({ queryKey: ["vn", "v17"], exact: true })).toBe(1);
+    expect(routeTargetIsReady(queryClient, "/knowledge/vn/v17")).toBe(true);
+
+    resolveRefetch({ id: "v17", title: "Fresh title" });
+    await refetch;
+  });
+
+  it("starts the reduced reveal fade while the transition is revealing", () => {
+    const timing = transitionTiming("reduced");
+
+    expect(transitionOverlayStyle("covering", "reduced", timing).opacity).toBe(1);
+    expect(transitionOverlayStyle("revealing", "reduced", timing)).toMatchObject({
+      opacity: 0,
+      transition: "opacity 60ms ease",
+    });
+  });
+
+  it("leaves same-document fragment links to native navigation", () => {
+    const current = new URL("https://example.test/knowledge?view=grid#top");
+
+    expect(isSameDocumentNavigation(
+      current,
+      new URL("https://example.test/knowledge?view=grid#main-content"),
+    )).toBe(true);
+    expect(isSameDocumentNavigation(
+      current,
+      new URL("https://example.test/knowledge?view=list#main-content"),
+    )).toBe(false);
   });
 
   it("announces a destination-specific loading label", () => {

@@ -119,3 +119,47 @@ Exit 0: TypeScript build and Vite production build completed; 110 modules transf
 
 - Styling is intentionally structural and inline for the new transition/settings surfaces because Task 2 does not own the stylesheet files. Task 3 can apply the planned visual-system classes without changing these state or accessibility contracts.
 - Unit tests cover reducer terminal paths, exact timing, destination labels, rendered accessibility separation, shell mounting, persistence validation, controls, cache summary, and image hints. Browser-level fake-timer/history/network checks remain appropriate for the later integration/Playwright task already defined in the project plan.
+
+## Fix round 1
+
+Corrected three route-transition edge cases:
+
+- Existing detail-query data now makes a destination ready even when React Query is performing a stale background refetch, so cache hits reveal immediately after cover.
+- Reduced motion begins its 60 ms fade during the `revealing` state and settles to `idle` only after that fade, preserving the intended 60 ms cover plus 60 ms reveal.
+- Same-document fragment links compare origin, pathname, and search independently of the hash. The `#main-content` skip link therefore retains native scroll and focus behavior.
+
+### RED
+
+```powershell
+npm.cmd run test -w @gal-toolbox/web -- src/app/RouteTransition.test.tsx
+```
+
+Exit 1: 1 file failed; 3 tests failed and 5 passed. The failures were the expected missing `routeTargetIsReady`, `transitionOverlayStyle`, and `isSameDocumentNavigation` behavior boundaries.
+
+### Focused GREEN
+
+```powershell
+npm.cmd run test -w @gal-toolbox/web -- src/app/RouteTransition.test.tsx src/app/settings.test.ts
+```
+
+Exit 0: 2 files passed; 15 tests passed.
+
+### Full verification
+
+```powershell
+npm.cmd run test -w @gal-toolbox/web
+```
+
+Exit 0: 7 files passed; 27 tests passed.
+
+```powershell
+npm.cmd run typecheck -w @gal-toolbox/web
+```
+
+Exit 0: `tsc -b --pretty false` completed without diagnostics.
+
+```powershell
+npm.cmd run build -w @gal-toolbox/web
+```
+
+Exit 0: TypeScript and Vite production build completed; 110 modules transformed.

@@ -66,9 +66,17 @@ function routeQueryKey(pathname: string): readonly [string, string] | null {
   return [match[1], decodeURIComponent(match[2])];
 }
 
-function targetIsFetching(queryClient: QueryClient, pathname: string) {
+export function routeTargetIsReady(queryClient: QueryClient, pathname: string) {
   const queryKey = routeQueryKey(pathname);
-  return queryKey ? queryClient.isFetching({ queryKey, exact: true }) > 0 : false;
+  if (!queryKey) return true;
+  if (queryClient.getQueryData(queryKey) !== undefined) return true;
+  return queryClient.isFetching({ queryKey, exact: true }) === 0;
+}
+
+export function isSameDocumentNavigation(current: URL, destination: URL) {
+  return current.origin === destination.origin
+    && current.pathname === destination.pathname
+    && current.search === destination.search;
 }
 
 const loadingFallbackMs = 10_000;
@@ -103,6 +111,26 @@ function curtainStyle(
     transitionDelay: `${delayedCover ? timing.layerDelayMs : 0}ms`,
     transitionTimingFunction: "cubic-bezier(0.65, 0, 0.35, 1)",
     willChange: "transform",
+  };
+}
+
+export function transitionOverlayStyle(
+  state: TransitionState,
+  motion: MotionPreference,
+  timing: TransitionTiming,
+): CSSProperties {
+  const reduced = motion === "reduced";
+  return {
+    position: "fixed",
+    inset: 0,
+    zIndex: 1000,
+    overflow: "hidden",
+    pointerEvents: state === "idle" ? "none" : "auto",
+    opacity: state === "idle" || (reduced && state === "revealing") ? 0 : 1,
+    background: reduced ? "rgba(10, 31, 58, 0.72)" : "transparent",
+    transition: reduced
+      ? `opacity ${state === "covering" ? timing.coverMs : timing.revealMs}ms ease`
+      : undefined,
   };
 }
 
@@ -160,9 +188,9 @@ export function RouteTransition({ children }: { children: ReactNode }) {
       if (generation !== generationRef.current) return;
       const check = () => {
         if (generation !== generationRef.current) return;
-        if (!targetIsFetching(queryClient, pathname)) reveal(generation);
+        if (routeTargetIsReady(queryClient, pathname)) reveal(generation);
       };
-      if (!targetIsFetching(queryClient, pathname)) {
+      if (routeTargetIsReady(queryClient, pathname)) {
         reveal(generation);
         return;
       }
@@ -213,9 +241,13 @@ export function RouteTransition({ children }: { children: ReactNode }) {
       ) return;
       const url = new URL(anchor.href, window.location.href);
       if (url.origin !== window.location.origin) return;
-      const current = `${location.pathname}${location.search}${location.hash}`;
+      const current = new URL(
+        `${location.pathname}${location.search}${location.hash}`,
+        window.location.origin,
+      );
+      if (isSameDocumentNavigation(current, url)) return;
+
       const destination = `${url.pathname}${url.search}${url.hash}`;
-      if (destination === current) return;
 
       event.preventDefault();
       begin(url.pathname, () => {
@@ -248,22 +280,12 @@ export function RouteTransition({ children }: { children: ReactNode }) {
 
   useEffect(() => () => clearAsyncWork(), [clearAsyncWork]);
 
-  const reduced = motion === "reduced";
   const transitionStyle: TransitionStyles = {
     position: "relative",
     "--route-transition-total": `${timing.coverMs + timing.revealMs}ms`,
     "--route-transition-layer-delay": `${timing.layerDelayMs}ms`,
   };
-  const overlayStyle: CSSProperties = {
-    position: "fixed",
-    inset: 0,
-    zIndex: 1000,
-    overflow: "hidden",
-    pointerEvents: state === "idle" ? "none" : "auto",
-    opacity: state === "idle" ? 0 : 1,
-    background: reduced ? "rgba(10, 31, 58, 0.72)" : "transparent",
-    transition: reduced ? `opacity ${state === "covering" ? timing.coverMs : timing.revealMs}ms ease` : undefined,
-  };
+  const overlayStyle = transitionOverlayStyle(state, motion, timing);
 
   return <div
     className={`route-transition route-transition-${motion} is-${state}`}
