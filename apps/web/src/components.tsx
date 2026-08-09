@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   entityPath,
@@ -9,6 +9,7 @@ import {
   type EntityType,
 } from "./api";
 import { advanceIntersectionLatch } from "./buffered-pages";
+import { useSettings } from "./app/settings";
 import { prefetchEntity } from "./queries";
 
 const labels: Record<EntityType, string> = {
@@ -31,9 +32,14 @@ export function EntityImage({
   fallbackText?: string;
   eager?: boolean;
 }) {
+  const { settings } = useSettings();
   const [revealed, setRevealed] = useState(false);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const sensitive = Boolean(image && (image.sexual >= 1 || image.violence >= 1));
+  const eagerBrowserLoad = eager && settings.imageQuality !== "data-saver";
+  const source = settings.imageQuality === "high"
+    ? image?.url
+    : image?.thumbnailUrl ?? image?.url;
 
   useEffect(() => {
     setStatus("loading");
@@ -53,10 +59,10 @@ export function EntityImage({
       <span className="image-loading-skeleton" aria-hidden="true" />
       <img
         className={`entity-image ${sensitive && !revealed ? "is-sensitive" : ""}`}
-        src={image.thumbnailUrl ?? image.url}
+        src={source}
         alt={alt}
-        loading={eager ? "eager" : "lazy"}
-        fetchPriority={eager ? "high" : "auto"}
+        loading={eagerBrowserLoad ? "eager" : "lazy"}
+        fetchPriority={eagerBrowserLoad ? "high" : "auto"}
         decoding="async"
         onLoad={() => setStatus("loaded")}
         onError={() => setStatus("error")}
@@ -89,9 +95,16 @@ export function EntityCard({
   meta?: ReactNode;
 }) {
   const queryClient = useQueryClient();
-  const prefetch = () => {
+  const { settings } = useSettings();
+  const prefetch = useCallback(() => {
     void prefetchEntity(queryClient, entity);
-  };
+  }, [entity, queryClient]);
+
+  useEffect(() => {
+    if (settings.prefetch === "aggressive") prefetch();
+  }, [prefetch, settings.prefetch]);
+
+  const prefetchOnIntent = settings.prefetch !== "data-saver" ? prefetch : undefined;
 
   return (
     <article className={`entity-card entity-${entity.type}`}>
@@ -99,8 +112,8 @@ export function EntityCard({
         to={entityPath(entity)}
         className="card-link"
         aria-label={`打开${labels[entity.type]}：${entity.name.primary}`}
-        onPointerEnter={prefetch}
-        onFocus={prefetch}
+        onPointerEnter={prefetchOnIntent}
+        onFocus={prefetchOnIntent}
         onPointerDown={prefetch}
       >
         <EntityImage

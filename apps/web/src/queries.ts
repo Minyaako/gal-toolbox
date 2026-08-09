@@ -52,6 +52,23 @@ export const tagVnsQuery = (id: string) =>
       lastPage.more ? lastPage.page + 1 : undefined,
   });
 
+export type QueryCacheSummary = {
+  total: number;
+  active: number;
+  fetching: number;
+  failed: number;
+};
+
+export function queryCacheSummary(queryClient: QueryClient): QueryCacheSummary {
+  const queries = queryClient.getQueryCache().getAll();
+  return {
+    total: queries.length,
+    active: queries.filter((query) => query.getObserversCount() > 0).length,
+    fetching: queries.filter((query) => query.state.fetchStatus === "fetching").length,
+    failed: queries.filter((query) => query.state.status === "error").length,
+  };
+}
+
 const imageUrl = (image: EntityImage) =>
   image ? (image.thumbnailUrl ?? image.url) : null;
 

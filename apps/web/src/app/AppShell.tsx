@@ -1,6 +1,8 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, useOutlet } from "react-router-dom";
 import { ExplorationTrail } from "../trail";
 import { mainNavigation, type NavigationItem } from "./navigation";
+import { RouteTransition } from "./RouteTransition";
+import { SettingsProvider } from "./settings";
 
 function NavigationMetadata({ item }: { item: NavigationItem }) {
   return <>
@@ -24,7 +26,8 @@ function NavigationLinks({ placement }: { placement: "rail" | "bottom" }) {
   </nav>;
 }
 
-export function AppShell() {
+function ShellLayout() {
+  const outlet = useOutlet();
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">跳到主要内容</a>
     <aside className="app-rail">
@@ -39,7 +42,7 @@ export function AppShell() {
       </div>
     </aside>
     <div className="app-stage">
-      <main id="main-content"><Outlet /></main>
+      <main id="main-content"><RouteTransition>{outlet}</RouteTransition></main>
       <ExplorationTrail />
       <footer className="site-footer">
         <span>Gal 百宝箱 / MVP 0.1</span>
@@ -49,4 +52,8 @@ export function AppShell() {
     </div>
     <NavigationLinks placement="bottom" />
   </div>;
+}
+
+export function AppShell() {
+  return <SettingsProvider><ShellLayout /></SettingsProvider>;
 }
