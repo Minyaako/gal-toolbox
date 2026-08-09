@@ -12,10 +12,22 @@ import { AppShell } from "./AppShell";
 
 type LegacyEntityType = "vn" | "character" | "staff" | "tag";
 
+export function legacyRedirectContract(
+  type: LegacyEntityType,
+  id: string,
+  search: string,
+  hash: string,
+) {
+  return {
+    replace: true,
+    to: `/knowledge/${type}/${id}${search}${hash}`,
+  };
+}
+
 function LegacyRedirect({ type }: { type: LegacyEntityType }) {
   const { id = "" } = useParams();
   const location = useLocation();
-  return <Navigate replace to={`/knowledge/${type}/${id}${location.search}${location.hash}`} />;
+  return <Navigate {...legacyRedirectContract(type, id, location.search, location.hash)} />;
 }
 
 export const appRoutes: RouteObject[] = [{
@@ -38,7 +50,7 @@ export const appRoutes: RouteObject[] = [{
 }];
 
 export function pageTitle(pathname: string): string {
-  if (/^\/knowledge\/tag\/[^/]+$/.test(pathname)) return "Tag 鍥鹃壌";
+  if (/^\/knowledge\/tag\/[^/]+$/.test(pathname)) return "Tag 图鉴";
   if (/^\/knowledge\/(vn|character|staff)\/[^/]+$/.test(pathname) || pathname === "/knowledge") return "知识图鉴";
   if (pathname === "/ranking") return "排行榜";
   if (pathname === "/settings") return "设置";
