@@ -41,7 +41,7 @@
 - Produces: `searchLocalizedTags(term: string): Array<{ id: string; en: string; zhHans: string }>`.
 - Consumed by: VNDB Tag DTO mapping and the Chinese search route in Task 2.
 
-- [ ] **Step 1: Write failing localization tests**
+- [x] **Step 1: Write failing localization tests**
 
 First add a Node test that exercises the generator with a complete controlled upstream fixture:
 
@@ -110,7 +110,7 @@ expect(mapTagSummary({ id: "g19", name: "Mystery", aliases: ["Mysteries"] }))
   });
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
 Run:
 
@@ -121,7 +121,7 @@ node --test scripts/tag-translation-generator.test.mjs
 
 Expected: FAIL because the generator and localization modules do not exist and `mapTagSummary` still returns English primary.
 
-- [ ] **Step 3: Add the sync script and package command**
+- [x] **Step 3: Add the sync script and package command**
 
 Implement `buildTagTranslationModule(source, sourceCommit)` in `scripts/tag-translation-generator.mjs`; keep all decoding, validation, filtering, sorting, and source generation in that pure function.
 
@@ -150,7 +150,7 @@ npm.cmd run sync:tag-translations
 
 Expected: generated module contains `g19: { en: "Mystery", zhHans: "悬疑" }`.
 
-- [ ] **Step 4: Implement minimal localization functions**
+- [x] **Step 4: Implement minimal localization functions**
 
 Implement `localizeTagName` using the generated record and existing string deduplication semantics. Implement `searchLocalizedTags` with normalized lowercase matching and scores:
 
@@ -163,7 +163,7 @@ Discard score 3, sort by best Chinese/English score, then English name, then num
 
 Change `mapTagSummary` to call `localizeTagName(tag.id, tag.name, tag.aliases)`.
 
-- [ ] **Step 5: Run focused tests and verify GREEN**
+- [x] **Step 5: Run focused tests and verify GREEN**
 
 Run:
 
@@ -174,7 +174,7 @@ npm.cmd run test:tag-translations
 
 Expected: both test files pass.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
 ```powershell
 git add package.json scripts/tag-translation-generator.mjs scripts/tag-translation-generator.test.mjs scripts/sync-tag-translations.mjs apps/api/src/tag-translations.generated.ts apps/api/src/tag-localization.ts apps/api/src/tag-localization.test.ts apps/api/src/vndb.ts apps/api/src/vndb.test.ts
@@ -198,7 +198,7 @@ git commit -m "feat: add generated Chinese Tag localization"
 - Produces: list response cache policy `public, max-age=60`.
 - Produces: detail response cache policy `public, max-age=300`.
 
-- [ ] **Step 1: Write failing API behavior tests**
+- [x] **Step 1: Write failing API behavior tests**
 
 Extract the existing temporary app setup in `app.test.ts` into this test-only helper:
 
@@ -244,7 +244,7 @@ expect(tag.headers["cache-control"]).toBe("public, max-age=300");
 expect(novels.headers["cache-control"]).toBe("public, max-age=60");
 ```
 
-- [ ] **Step 2: Run the API test and verify RED**
+- [x] **Step 2: Run the API test and verify RED**
 
 Run:
 
@@ -254,7 +254,7 @@ npm.cmd test -w @gal-toolbox/api -- src/app.test.ts
 
 Expected: FAIL because Chinese Tag search still calls VNDB and business endpoints do not set these cache headers.
 
-- [ ] **Step 3: Implement local Chinese search and cache policies**
+- [x] **Step 3: Implement local Chinese search and cache policies**
 
 Add:
 
@@ -274,7 +274,7 @@ In the search route, when `type === "tag" && containsHan(term)`:
 
 Set list cache policy on search, staff characters, and Tag VNs. Set detail cache policy on VN, character, staff, and Tag routes.
 
-- [ ] **Step 4: Update OpenAPI and contract docs**
+- [x] **Step 4: Update OpenAPI and contract docs**
 
 Document that Tag search accepts localized Chinese names, names may have Chinese `primary` and English `original`, `X-Cache` may be `LOCAL`, and responses use the two cache policies. Increment OpenAPI info version from `1.1.0` to `1.2.0`.
 
@@ -285,7 +285,7 @@ expect(openApiDocument.info.version).toBe("1.2.0");
 expect(openApiDocument.paths["/search"].get.description).toContain("Chinese");
 ```
 
-- [ ] **Step 5: Run focused API tests and verify GREEN**
+- [x] **Step 5: Run focused API tests and verify GREEN**
 
 Run:
 
@@ -295,7 +295,7 @@ npm.cmd test -w @gal-toolbox/api -- src/app.test.ts src/openapi.test.ts
 
 Expected: both test files pass.
 
-- [ ] **Step 6: Commit Task 2**
+- [x] **Step 6: Commit Task 2**
 
 ```powershell
 git add apps/api/src/app.ts apps/api/src/app.test.ts apps/api/src/openapi.ts apps/api/src/openapi.test.ts docs/api-contract.md
@@ -323,7 +323,7 @@ git commit -m "feat: support Chinese Tag search and HTTP caching"
 - Produces `prefetchEntity(queryClient: QueryClient, entity: EntitySummary, preload?: (url: string) => void): Promise<void>`.
 - EntityCard consumes the current QueryClient and calls the same prefetch function from three intent events.
 
-- [ ] **Step 1: Write failing intent-prefetch tests**
+- [x] **Step 1: Write failing intent-prefetch tests**
 
 Use a real QueryClient and a stubbed global fetch:
 
@@ -348,7 +348,7 @@ it("deduplicates concurrent VN intent prefetch and preloads returned images", as
 
 Add a Tag case asserting that detail and first VN page are cached under `["tag", id]` and `["tag-vns", id]`.
 
-- [ ] **Step 2: Run the query test and verify RED**
+- [x] **Step 2: Run the query test and verify RED**
 
 Run:
 
@@ -358,7 +358,7 @@ npm.cmd test -w @gal-toolbox/web -- src/queries.test.ts
 
 Expected: FAIL because `queries.ts` and `prefetchEntity` do not exist.
 
-- [ ] **Step 3: Implement shared query options and prefetch**
+- [x] **Step 3: Implement shared query options and prefetch**
 
 Build all query options from the existing API functions. For infinite queries use:
 
@@ -380,7 +380,7 @@ Implement `prefetchEntity` with:
 
 Move the existing QueryClient construction from `main.tsx` into `query-client.ts` as `export const queryClient = new QueryClient(...)`; import that instance back into `main.tsx`. Keep `prefetchEntity` parameterized with a QueryClient so tests use an isolated instance.
 
-- [ ] **Step 4: Wire route queries and card intent events**
+- [x] **Step 4: Wire route queries and card intent events**
 
 Replace inline page query definitions with the option builders. In `EntityCard`, use `useQueryClient()` and attach:
 
@@ -398,7 +398,7 @@ Add to `apps/web/index.html`:
 <link rel="preconnect" href="https://t.vndb.org" crossorigin />
 ```
 
-- [ ] **Step 5: Run focused tests and verify GREEN**
+- [x] **Step 5: Run focused tests and verify GREEN**
 
 Run:
 
@@ -408,7 +408,7 @@ npm.cmd test -w @gal-toolbox/web -- src/queries.test.ts src/api.test.ts
 
 Expected: both test files pass with one fetch for duplicate VN intent.
 
-- [ ] **Step 6: Commit Task 3**
+- [x] **Step 6: Commit Task 3**
 
 ```powershell
 git add apps/web/src/query-client.ts apps/web/src/queries.ts apps/web/src/queries.test.ts apps/web/src/main.tsx apps/web/src/components.tsx apps/web/src/pages/VnPage.tsx apps/web/src/pages/CharacterPage.tsx apps/web/src/pages/StaffPage.tsx apps/web/src/pages/TagPage.tsx apps/web/index.html
@@ -433,7 +433,7 @@ git commit -m "feat: prefetch entity details on navigation intent"
 - Returns `items`, `hasBufferedPage`, `canRevealNextPage`, `isWaitingForBuffer`, and `revealNextPage`.
 - AutoPageLoader consumes buffer-aware flags and calls only `revealNextPage`.
 
-- [ ] **Step 1: Write failing reducer and selector tests**
+- [x] **Step 1: Write failing reducer and selector tests**
 
 ```ts
 it("keeps the second loaded page hidden until one reveal", () => {
@@ -462,7 +462,7 @@ it("requests a buffer only when no hidden loaded page exists", () => {
 });
 ```
 
-- [ ] **Step 2: Run the pagination test and verify RED**
+- [x] **Step 2: Run the pagination test and verify RED**
 
 Run:
 
@@ -472,7 +472,7 @@ npm.cmd test -w @gal-toolbox/web -- src/buffered-pages.test.ts
 
 Expected: FAIL because the buffered pagination module does not exist.
 
-- [ ] **Step 3: Implement the pure state machine and hook**
+- [x] **Step 3: Implement the pure state machine and hook**
 
 Implement:
 
@@ -484,7 +484,7 @@ export function selectVisibleItems<T>(pages: Array<Page<T>>, visiblePageCount: n
 
 The reducer's reveal action uses `Math.min(current + 1, loadedPageCount)`. The hook runs a guarded effect that calls `fetchNextPage` only when `shouldFetchBuffer` is true. `revealNextPage` reveals a loaded buffer immediately; if none exists, it awaits one fetch and then dispatches one reveal.
 
-- [ ] **Step 4: Integrate all three infinite lists**
+- [x] **Step 4: Integrate all three infinite lists**
 
 Use stable scopes:
 
@@ -500,7 +500,7 @@ Render only `buffered.items`. Change loader copy:
 
 Keep the existing 600px root margin and accessible button.
 
-- [ ] **Step 5: Run focused tests and verify GREEN**
+- [x] **Step 5: Run focused tests and verify GREEN**
 
 Run:
 
@@ -510,7 +510,7 @@ npm.cmd test -w @gal-toolbox/web -- src/buffered-pages.test.ts src/queries.test.
 
 Expected: all three test files pass.
 
-- [ ] **Step 6: Commit Task 4**
+- [x] **Step 6: Commit Task 4**
 
 ```powershell
 git add apps/web/src/buffered-pages.ts apps/web/src/buffered-pages.test.ts apps/web/src/pages/SearchPage.tsx apps/web/src/pages/StaffPage.tsx apps/web/src/pages/TagPage.tsx apps/web/src/components.tsx apps/web/src/styles.css
@@ -538,7 +538,7 @@ git commit -m "feat: buffer one hidden page ahead"
 - Produces: Chinese primary Tag labels with English secondary labels.
 - Produces: visible and repository-level CC BY 4.0 attribution.
 
-- [ ] **Step 1: Write a failing formatting test**
+- [x] **Step 1: Write a failing formatting test**
 
 Create and test `getSecondaryName(name: EntityName): string | null` in `tag-label.ts`:
 
@@ -558,7 +558,7 @@ expect(getSecondaryName({
 })).toBeNull();
 ```
 
-- [ ] **Step 2: Run the web formatting test and verify RED**
+- [x] **Step 2: Run the web formatting test and verify RED**
 
 Run:
 
@@ -568,14 +568,14 @@ npm.cmd test -w @gal-toolbox/web -- src/tag-label.test.ts
 
 Expected: FAIL because the helper does not exist.
 
-- [ ] **Step 3: Implement Chinese-first Tag UI**
+- [x] **Step 3: Implement Chinese-first Tag UI**
 
 - Use the shared name block to render Chinese primary and English original on Tag cards and Tag detail.
 - In the VN Tag cloud, render Chinese text as the main span and English as a compact secondary label only when different.
 - Replace copy that says Chinese translation is future work with “中文来自 VNDB Profile Search，英文保留用于定位。”
 - Keep the existing rating number and responsive wrapping.
 
-- [ ] **Step 4: Add attribution**
+- [x] **Step 4: Add attribution**
 
 Create `THIRD_PARTY_NOTICES.md` containing:
 
@@ -587,7 +587,7 @@ Create `THIRD_PARTY_NOTICES.md` containing:
 
 Add a footer link labeled “Tag 中文：VNDB Profile Search ↗” to the source repository, and update README/data license sections.
 
-- [ ] **Step 5: Run the formatting test and verify GREEN**
+- [x] **Step 5: Run the formatting test and verify GREEN**
 
 Run:
 
@@ -597,7 +597,7 @@ npm.cmd test -w @gal-toolbox/web -- src/tag-label.test.ts
 
 Expected: test passes.
 
-- [ ] **Step 6: Commit Task 5**
+- [x] **Step 6: Commit Task 5**
 
 ```powershell
 git add apps/web/src/pages/VnPage.tsx apps/web/src/pages/TagPage.tsx apps/web/src/components.tsx apps/web/src/App.tsx apps/web/src/styles.css apps/web/src/tag-label.ts apps/web/src/tag-label.test.ts THIRD_PARTY_NOTICES.md README.md docs/performance-tags-openapi-spec.md
@@ -616,7 +616,7 @@ git commit -m "feat: present Chinese Tags with attribution"
 - Consumes all prior tasks.
 - Produces durable validation evidence and handoff notes.
 
-- [ ] **Step 1: Run the complete automated verification**
+- [x] **Step 1: Run the complete automated verification**
 
 ```powershell
 npm.cmd run typecheck
@@ -628,7 +628,7 @@ git diff --check
 
 Expected: every command exits 0; Vitest reports 0 failed tests; audit reports 0 high-severity vulnerabilities.
 
-- [ ] **Step 2: Verify the real API**
+- [x] **Step 2: Verify the real API**
 
 Request:
 
@@ -646,7 +646,7 @@ Assert:
 - Tag VN page returns `Cache-Control: public, max-age=60`.
 - OpenAPI version is `1.2.0`.
 
-- [ ] **Step 3: Verify buffered paging in Playwright**
+- [x] **Step 3: Verify buffered paging in Playwright**
 
 Use a fresh named Playwright CLI session. Open a Tag with more than 36 VNs and inspect requests plus DOM:
 
@@ -657,7 +657,7 @@ Use a fresh named Playwright CLI session. Open a Tag with more than 36 VNs and i
 5. Requests now contain page 3.
 6. A single scroll/reveal never jumps directly from 12 to 36.
 
-- [ ] **Step 4: Verify intent prefetch in Playwright**
+- [x] **Step 4: Verify intent prefetch in Playwright**
 
 On a search result:
 
@@ -666,14 +666,14 @@ On a search result:
 3. Click the card and confirm no second network request is made for the same detail during its 5-minute stale window.
 4. Repeat with keyboard focus on a Tag card.
 
-- [ ] **Step 5: Verify Chinese Tag UI and responsive behavior**
+- [x] **Step 5: Verify Chinese Tag UI and responsive behavior**
 
 - Search for `悬疑`.
 - Follow `悬疑 → 时空轮回 → 中文 Tag → VN`.
 - Capture desktop and 390×844 screenshots under `output/playwright/buffered-prefetch-tags/`.
 - Confirm English secondary labels do not overflow and console reports 0 errors.
 
-- [ ] **Step 6: Update project summary**
+- [x] **Step 6: Update project summary**
 
 Record:
 
