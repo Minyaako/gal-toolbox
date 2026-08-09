@@ -1,11 +1,6 @@
 import { useEffect } from "react";
-import { Link, Route, Routes, useLocation } from "react-router-dom";
-import { ExplorationTrail } from "./trail";
-import { CharacterPage } from "./pages/CharacterPage";
-import { SearchPage } from "./pages/SearchPage";
-import { StaffPage } from "./pages/StaffPage";
-import { TagPage } from "./pages/TagPage";
-import { VnPage } from "./pages/VnPage";
+import { useLocation, useRoutes } from "react-router-dom";
+import { appRoutes } from "./app/routes";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -16,39 +11,6 @@ function ScrollToTop() {
 }
 
 export function App() {
-  return (
-    <div className="app-shell">
-      <ScrollToTop />
-      <a className="skip-link" href="#main-content">跳到主要内容</a>
-      <header className="site-header">
-        <Link className="brand" to="/">
-          <span className="brand-seal" aria-hidden="true">百</span>
-          <span><strong>Gal 百宝箱</strong><small>Visual association archive</small></span>
-        </Link>
-        <nav aria-label="主导航">
-          <Link to="/">联想搜索</Link>
-          <a href="/api/docs" target="_blank" rel="noreferrer">API 文档 ↗</a>
-          <a href="https://vndb.org/" target="_blank" rel="noreferrer">数据来源 VNDB ↗</a>
-        </nav>
-      </header>
-      <main id="main-content">
-        <Routes>
-          <Route path="/" element={<SearchPage />} />
-          <Route path="/vn/:id" element={<VnPage />} />
-          <Route path="/character/:id" element={<CharacterPage />} />
-          <Route path="/staff/:id" element={<StaffPage />} />
-          <Route path="/tag/:id" element={<TagPage />} />
-          <Route path="*" element={<SearchPage />} />
-        </Routes>
-      </main>
-      <ExplorationTrail />
-      <footer className="site-footer">
-        <span>Gal 百宝箱 / MVP 0.1</span>
-        <span>非商业验证项目 · 数据来自 VNDB</span>
-        <a href="https://github.com/JodieRuth/VNDB-Profile-Search" target="_blank" rel="noreferrer">
-          Tag 中文：VNDB Profile Search ↗
-        </a>
-      </footer>
-    </div>
-  );
+  const routes = useRoutes(appRoutes);
+  return <><ScrollToTop />{routes}</>;
 }
