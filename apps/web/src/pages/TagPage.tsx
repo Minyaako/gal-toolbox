@@ -33,12 +33,12 @@ export function TagPage() {
   }, [detail.data, visit]);
 
   if (detail.isPending) return <LoadingScene title="正在打开 Tag 索引" note="定义与关联作品正在整理。" />;
-  if (detail.isError) return <StatePanel title="Tag 资料加载失败" tone="error"><p>{detail.error.message}</p></StatePanel>;
+  if (detail.isError) return <StatePanel title="Tag 资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
 
   const tag = detail.data;
   const items = buffered.items;
   return (
-    <article className="detail-page tag-page">
+    <article className="detail-page tag-page entity-detail detail-tag">
       <header className="staff-hero tag-hero">
         <div className="staff-glyph tag-glyph" aria-hidden="true">#</div>
         <div className="detail-intro">
@@ -52,10 +52,11 @@ export function TagPage() {
         </div>
       </header>
 
-      <section className="detail-section">
+      <div className="detail-relations is-single">
+      <section className="detail-section relation-primary">
         <SectionHeading index="01" title="带有此 Tag 的作品" note="中文来自 VNDB Profile Search；按 VNDB 评分优先，后台始终多准备一页。" />
         {novels.isPending ? <LoadingScene compact title="正在整理作品卡" /> : novels.isError ? (
-          <StatePanel title="关联作品加载失败" tone="error"><p>{novels.error.message}</p></StatePanel>
+          <StatePanel title="关联作品加载失败" tone="error"><p>{novels.error.message}</p><button type="button" onClick={() => novels.refetch()}>重新加载</button></StatePanel>
         ) : items.length ? (
           <>
             <div className="entity-grid">{items.map((vn) => <EntityCard key={vn.id} entity={vn} />)}</div>
@@ -69,6 +70,7 @@ export function TagPage() {
           </>
         ) : <StatePanel title="暂无相关作品" />}
       </section>
+      </div>
     </article>
   );
 }

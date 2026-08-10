@@ -47,9 +47,9 @@ export function SearchPage() {
 
   return (
     <>
-      <section className="search-hero" aria-labelledby="search-title">
+      <section className="search-hero knowledge-search-hero" aria-labelledby="search-title">
         <div className="hero-kicker"><span>01</span> VNDB visual association search</div>
-        <h1 id="search-title">从一个名字，<br />顺着关系找到下一张脸。</h1>
+        <h1 id="search-title">从一个名字，<br />翻开整条关系链。</h1>
         <p>搜索作品、角色或声优。每一次点击都会保留为可返回的探索路径。</p>
 
         <form className="search-console" onSubmit={submit}>
@@ -86,7 +86,7 @@ export function SearchPage() {
         </form>
       </section>
 
-      <section className="results-section" aria-live="polite">
+      <section className="results-section knowledge-results" aria-live="polite">
         <SectionHeading
           index="02"
           title={query ? `“${query}”的搜索结果` : "等待一个起点"}

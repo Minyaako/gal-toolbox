@@ -27,12 +27,12 @@ export function StaffPage() {
   }, [detail.data, visit]);
 
   if (detail.isPending) return <LoadingScene title="正在打开声优资料" note="正在整理艺名与关联角色。" />;
-  if (detail.isError) return <StatePanel title="声优资料加载失败" tone="error"><p>{detail.error.message}</p></StatePanel>;
+  if (detail.isError) return <StatePanel title="声优资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
 
   const staff = detail.data;
   const characters = buffered.items;
   return (
-    <article className="detail-page">
+    <article className="detail-page entity-detail detail-staff">
       <header className="staff-hero">
         <div className="staff-glyph" aria-hidden="true">{staff.entity.name.primary.slice(0, 1)}</div>
         <div className="detail-intro">
@@ -47,10 +47,11 @@ export function StaffPage() {
         </div>
       </header>
 
-      <section className="detail-section">
+      <div className="detail-relations is-single">
+      <section className="detail-section relation-primary">
         <SectionHeading index="01" title="配过的角色" note="图片来自角色立绘；VNDB 不提供声优本人照片。作品列表表示角色登场作品。" />
         {roles.isPending ? <LoadingScene compact title="正在整理角色卡" note="首批 12 个角色即将出现。" /> : roles.isError ? (
-          <StatePanel title="角色关系加载失败" tone="error"><p>{roles.error.message}</p></StatePanel>
+          <StatePanel title="角色关系加载失败" tone="error"><p>{roles.error.message}</p><button type="button" onClick={() => roles.refetch()}>重新加载</button></StatePanel>
         ) : characters.length ? (
           <>
             <div className="role-grid">
@@ -72,6 +73,7 @@ export function StaffPage() {
           </>
         ) : <StatePanel title="暂无配音角色记录" />}
       </section>
+      </div>
     </article>
   );
 }

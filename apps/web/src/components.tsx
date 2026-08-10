@@ -19,6 +19,28 @@ const labels: Record<EntityType, string> = {
   tag: "Tag",
 };
 
+type ImageStatus = "loading" | "loaded" | "error";
+type ImageLoadState = { source: string | null; status: ImageStatus };
+
+export function imagePresentation(image: EntityImageType, alt: string): {
+  kind: "image" | "fallback";
+  alt: string;
+  fallbackText: string;
+} {
+  return {
+    kind: image ? "image" : "fallback",
+    alt,
+    fallbackText: alt.trim().slice(0, 1) || "?",
+  };
+}
+
+export function imageLoadStatus(
+  state: ImageLoadState,
+  resolvedSource: string | null,
+): ImageStatus {
+  return state.source === resolvedSource ? state.status : "loading";
+}
+
 export function EntityImage({
   image,
   alt,
@@ -33,23 +55,24 @@ export function EntityImage({
   eager?: boolean;
 }) {
   const { settings } = useSettings();
-  const [revealed, setRevealed] = useState(false);
-  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [revealedSource, setRevealedSource] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<ImageLoadState>({
+    source: null,
+    status: "loading",
+  });
   const sensitive = Boolean(image && (image.sexual >= 1 || image.violence >= 1));
   const eagerBrowserLoad = eager && settings.imageQuality !== "data-saver";
-  const source = settings.imageQuality === "high"
+  const source = (settings.imageQuality === "high"
     ? image?.url
-    : image?.thumbnailUrl ?? image?.url;
+    : image?.thumbnailUrl ?? image?.url) ?? null;
+  const status = imageLoadStatus(loadState, source);
+  const presentation = imagePresentation(status === "error" ? null : image, alt);
+  const revealed = revealedSource === source;
 
-  useEffect(() => {
-    setStatus("loading");
-    setRevealed(false);
-  }, [image?.url]);
-
-  if (!image || status === "error") {
+  if (presentation.kind === "fallback" || !source) {
     return (
-      <div className={`entity-image image-fallback ${className}`} aria-label={`${alt} 暂无图片`}>
-        <span>{fallbackText ?? alt.slice(0, 1)}</span>
+      <div className={`entity-image image-fallback ${className}`} aria-label={`${presentation.alt} 暂无图片`}>
+        <span>{fallbackText ?? presentation.fallbackText}</span>
       </div>
     );
   }
@@ -64,11 +87,11 @@ export function EntityImage({
         loading={eagerBrowserLoad ? "eager" : "lazy"}
         fetchPriority={eagerBrowserLoad ? "high" : "auto"}
         decoding="async"
-        onLoad={() => setStatus("loaded")}
-        onError={() => setStatus("error")}
+        onLoad={() => setLoadState({ source, status: "loaded" })}
+        onError={() => setLoadState({ source, status: "error" })}
       />
       {sensitive && !revealed ? (
-        <button className="reveal-image" type="button" onClick={() => setRevealed(true)}>
+        <button className="reveal-image" type="button" onClick={() => setRevealedSource(source)}>
           显示分级图片
         </button>
       ) : null}

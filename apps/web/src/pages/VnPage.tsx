@@ -30,11 +30,11 @@ export function VnPage() {
   }, [query.data, visit]);
 
   if (query.isPending) return <LoadingScene title="正在打开作品档案" note="封面、配音关系和 Tag 正在汇合。" />;
-  if (query.isError) return <StatePanel title="作品资料加载失败" tone="error"><p>{query.error.message}</p></StatePanel>;
+  if (query.isError) return <StatePanel title="作品资料加载失败" tone="error"><p>{query.error.message}</p><button type="button" onClick={() => query.refetch()}>重新加载</button></StatePanel>;
 
   const vn = query.data;
   return (
-    <article className="detail-page">
+    <article className="detail-page entity-detail detail-vn">
       <header className="detail-hero">
         <EntityImage image={vn.entity.image} alt={vn.entity.name.primary} className="detail-cover" eager />
         <div className="detail-intro">
@@ -49,7 +49,8 @@ export function VnPage() {
         </div>
       </header>
 
-      <section className="detail-section">
+      <div className="detail-relations">
+      <section className="detail-section relation-primary">
         <SectionHeading index="01" title="角色与声优" note="点击任意一侧都可以继续探索。" />
         {vn.cast.length ? (
           <div className="cast-list">
@@ -71,7 +72,7 @@ export function VnPage() {
       </section>
 
       {vn.tags.some((item) => item.spoiler === 0 && item.category !== "ero") ? (
-        <section className="detail-section tag-section">
+        <section className="detail-section tag-section relation-rail-card">
           <SectionHeading index="02" title="继续沿 Tag 探索" note="中文来自 VNDB Profile Search，英文保留用于定位。" />
           <div className="tag-cloud">
             {vn.tags
@@ -99,13 +100,14 @@ export function VnPage() {
       ) : null}
 
       {vn.relations.length ? (
-        <section className="detail-section">
+        <section className="detail-section relation-rail-card">
           <SectionHeading index="03" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
           <div className="entity-grid compact-grid">
             {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} />)}
           </div>
         </section>
       ) : null}
+      </div>
     </article>
   );
 }

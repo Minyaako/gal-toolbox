@@ -6,6 +6,10 @@ import { App } from "./App";
 import { queryClient } from "./query-client";
 import { TrailProvider } from "./trail";
 import "./styles.css";
+import "./styles/tokens.css";
+import "./styles/base.css";
+import "./styles/shell.css";
+import "./styles/knowledge.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
