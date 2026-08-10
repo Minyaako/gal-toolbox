@@ -47,15 +47,13 @@ python $helper --input $sheet --out $alphaSheet --auto-key border --soft-matte -
 magick $alphaSheet -quality 82 "$out\entity-icons.webp"
 ```
 
-For each named slice, first crop the 512 × 512 cell from `$alphaSheet`, then trim its alpha bounds, add 16 px transparent padding without exceeding the original cell, and write alpha WebP at quality 82. The `cropAndPadWithinCell` placeholder below must preserve alpha and clamp the padded bounds to the source cell; it is deliberately explicit because plain `-trim -border 16` can grow beyond its cell.
-
 ```powershell
-cropAndPadWithinCell -input $alphaSheet -crop '512x512+0+0'       -padding 16 -max-size 512x512 -webp-quality 82 -output "$out\lobby-knowledge.webp"
-cropAndPadWithinCell -input $alphaSheet -crop '512x512+512+0'     -padding 16 -max-size 512x512 -webp-quality 82 -output "$out\entity-character.webp"
-cropAndPadWithinCell -input $alphaSheet -crop '512x512+1024+0'    -padding 16 -max-size 512x512 -webp-quality 82 -output "$out\entity-staff.webp"
-cropAndPadWithinCell -input $alphaSheet -crop '512x512+0+512'     -padding 16 -max-size 512x512 -webp-quality 82 -output "$out\entity-tag.webp"
-cropAndPadWithinCell -input $alphaSheet -crop '512x512+512+512'   -padding 16 -max-size 512x512 -webp-quality 82 -output "$out\lobby-ranking.webp"
-cropAndPadWithinCell -input $alphaSheet -crop '512x512+1024+512'  -padding 16 -max-size 512x512 -webp-quality 82 -output "$out\lobby-settings.webp"
+magick $alphaSheet -crop '512x512+0+0' +repage -trim +repage -bordercolor none -border 16 -background none -gravity center -extent 512x512 -quality 82 "$out\lobby-knowledge.webp"
+magick $alphaSheet -crop '512x512+512+0' +repage -trim +repage -bordercolor none -border 16 -background none -gravity center -extent 512x512 -quality 82 "$out\entity-character.webp"
+magick $alphaSheet -crop '512x512+1024+0' +repage -trim +repage -bordercolor none -border 16 -background none -gravity center -extent 512x512 -quality 82 "$out\entity-staff.webp"
+magick $alphaSheet -crop '512x512+0+512' +repage -trim +repage -bordercolor none -border 16 -background none -gravity center -extent 512x512 -quality 82 "$out\entity-tag.webp"
+magick $alphaSheet -crop '512x512+512+512' +repage -trim +repage -bordercolor none -border 16 -background none -gravity center -extent 512x512 -quality 82 "$out\lobby-ranking.webp"
+magick $alphaSheet -crop '512x512+1024+512' +repage -trim +repage -bordercolor none -border 16 -background none -gravity center -extent 512x512 -quality 82 "$out\lobby-settings.webp"
 ```
 
 Slice mapping is reading order: `(0,0)` knowledge/open-book, `(512,0)` character/portrait-frame, `(1024,0)` staff/microphone, `(0,512)` Tag/hanging-tag, `(512,512)` ranking/podium, `(1024,512)` settings/palette-and-gear.

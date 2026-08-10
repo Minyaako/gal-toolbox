@@ -526,25 +526,6 @@ button:disabled { cursor: wait; opacity: 0.65; }
   .entity-card .image-frame, .entity-card > .card-link > .entity-image { aspect-ratio: 3 / 4; min-height: 150px; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --bg: #101a20;
-    --surface: #17242c;
-    --surface-2: #26343a;
-    --ink: #f0eadf;
-    --muted: #a9ada9;
-    --accent: #e16049;
-    --accent-dark: #f18a72;
-    --line: #49565a;
-    --shadow: 0 18px 50px rgb(0 0 0 / 32%);
-  }
-  body { background-color: var(--bg); }
-  .site-header { background: rgb(16 26 32 / 92%); }
-  .image-fallback, .staff-monogram { background: #081116; }
-  .staff-glyph { background: #081116; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
