@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { entityPath } from "../api";
 import { EntityCard, EntityImage, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
@@ -20,6 +20,10 @@ const relationLabels: Record<string, string> = {
   fan: "衍生作品",
 };
 
+export function RelationRail({ children }: { children: ReactNode }) {
+  return <div className="relation-rail">{children}</div>;
+}
+
 export function VnPage() {
   const { id = "" } = useParams();
   const query = useQuery({ ...vnQuery(id), enabled: Boolean(id) });
@@ -33,6 +37,9 @@ export function VnPage() {
   if (query.isError) return <StatePanel title="作品资料加载失败" tone="error"><p>{query.error.message}</p><button type="button" onClick={() => query.refetch()}>重新加载</button></StatePanel>;
 
   const vn = query.data;
+  const visibleTags = vn.tags
+    .filter((item) => item.spoiler === 0 && item.category !== "ero")
+    .slice(0, 24);
   return (
     <article className="detail-page entity-detail detail-vn">
       <header className="detail-hero">
@@ -71,14 +78,12 @@ export function VnPage() {
         ) : <StatePanel title="该作品暂无配音关系" />}
       </section>
 
-      {vn.tags.some((item) => item.spoiler === 0 && item.category !== "ero") ? (
+      {visibleTags.length || vn.relations.length ? <RelationRail>
+      {visibleTags.length ? (
         <section className="detail-section tag-section relation-rail-card">
           <SectionHeading index="02" title="继续沿 Tag 探索" note="中文来自 VNDB Profile Search，英文保留用于定位。" />
           <div className="tag-cloud">
-            {vn.tags
-              .filter((item) => item.spoiler === 0 && item.category !== "ero")
-              .slice(0, 24)
-              .map((item) => {
+            {visibleTags.map((item) => {
                 const secondary = getSecondaryName(item.tag.name);
                 return (
                   <Link
@@ -107,6 +112,7 @@ export function VnPage() {
           </div>
         </section>
       ) : null}
+      </RelationRail> : null}
       </div>
     </article>
   );

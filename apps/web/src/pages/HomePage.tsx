@@ -11,10 +11,21 @@ const preferenceLabels = {
 function LobbyArtwork({ src, kind }: { src: string; kind: "knowledge" | "ranking" | "settings" }) {
   return <span className={`lobby-artwork lobby-artwork-${kind}`} aria-hidden="true">
     <svg viewBox="0 0 120 120" focusable="false">
-      <path d="M23 25h31c8 0 13 4 16 10 3-6 8-10 16-10h11v66H84c-7 0-12 2-14 6-2-4-7-6-14-6H23z" />
-      <path d="M70 35v62M34 42h22M34 53h22M84 42h7M84 53h7" />
+      {kind === "knowledge" ? <>
+        <path d="M23 25h31c8 0 13 4 16 10 3-6 8-10 16-10h11v66H84c-7 0-12 2-14 6-2-4-7-6-14-6H23z" />
+        <path d="M70 35v62M34 42h22M34 53h22M84 42h7M84 53h7" />
+      </> : null}
+      {kind === "ranking" ? <>
+        <path d="M22 93h76M31 91V58h18v33M51 91V39h18v52M71 91V50h18v41" />
+        <path d="M40 49l21-20 20 14M57 30h8v8" />
+      </> : null}
+      {kind === "settings" ? <>
+        <circle cx="60" cy="60" r="17" />
+        <path d="M60 22v14M60 84v14M22 60h14M84 60h14M33 33l10 10M77 77l10 10M87 33 77 43M43 77 33 87" />
+        <path d="M46 29h28l5 11 11 5v30l-11 5-5 11H46l-5-11-11-5V45l11-5z" />
+      </> : null}
     </svg>
-    <img src={src} alt="" />
+    <img src={src} alt="" onError={({ currentTarget }) => { currentTarget.hidden = true; currentTarget.style.display = "none"; }} />
   </span>;
 }
 
