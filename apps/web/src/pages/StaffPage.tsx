@@ -82,6 +82,8 @@ export function StaffPage() {
               hasNextPage={buffered.canRevealNextPage}
               isFetching={buffered.isWaitingForBuffer}
               buffered={buffered.hasBufferedPage}
+              pageScope={`staff:${id}`}
+              pageProgress={buffered.visiblePageCount}
               onLoad={() => void buffered.revealNextPage()}
               label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览角色"}
             />

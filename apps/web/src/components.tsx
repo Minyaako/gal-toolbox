@@ -314,36 +314,56 @@ export function AutoPageLoader({
   hasNextPage,
   isFetching,
   buffered = false,
+  pageScope,
+  pageProgress,
   onLoad,
   label = "继续加载",
 }: {
   hasNextPage: boolean;
   isFetching: boolean;
   buffered?: boolean;
+  pageScope: string;
+  pageProgress: number;
   onLoad: () => void;
   label?: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const autoLoadArmedRef = useRef(true);
+  const lastAutoLoadKeyRef = useRef<string | null>(null);
+  const autoLoadKey = `${pageScope}:${pageProgress}`;
+
+  useEffect(() => {
+    autoLoadArmedRef.current = true;
+  }, [autoLoadKey]);
 
   useEffect(() => {
     const target = sentinelRef.current;
     if (!target || !hasNextPage || isFetching) return;
+    let active = true;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry) return;
+        if (!active || !entry) return;
         const next = advanceIntersectionLatch(
           autoLoadArmedRef.current,
           entry.isIntersecting,
         );
         autoLoadArmedRef.current = next.armed;
-        if (next.shouldLoad) onLoad();
+        if (
+          next.shouldLoad &&
+          lastAutoLoadKeyRef.current !== autoLoadKey
+        ) {
+          lastAutoLoadKeyRef.current = autoLoadKey;
+          onLoad();
+        }
       },
       { rootMargin: "600px 0px" },
     );
     observer.observe(target);
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetching, onLoad]);
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [hasNextPage, isFetching, onLoad, autoLoadKey]);
 
   if (!hasNextPage) return null;
   return (

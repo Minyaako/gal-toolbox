@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  AutoPageLoader,
   EntityCard,
   createEntityPrefetchIntent,
   imageLoadStatus,
@@ -17,6 +18,30 @@ import {
 } from "./components";
 import { SettingsProvider } from "./app/settings";
 import { entityPath, type EntitySummary } from "./api";
+
+class ControllableIntersectionObserver {
+  static instances: ControllableIntersectionObserver[] = [];
+  private readonly callback: IntersectionObserverCallback;
+  disconnected = false;
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    ControllableIntersectionObserver.instances.push(this);
+  }
+
+  observe() {}
+
+  disconnect() {
+    this.disconnected = true;
+  }
+
+  emit(isIntersecting: boolean) {
+    this.callback(
+      [{ isIntersecting } as IntersectionObserverEntry],
+      this as unknown as IntersectionObserver,
+    );
+  }
+}
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -237,5 +262,104 @@ describe("entity intent prefetch policy", () => {
     expect(keyboardPromote).toHaveBeenCalledTimes(1);
     promotedIntent.dispose();
     keyboardIntent.dispose();
+  });
+});
+
+describe("automatic pagination", () => {
+  it("allows one automatic load per page progress across observer rebuilds", async () => {
+    vi.stubGlobal("IntersectionObserver", ControllableIntersectionObserver);
+    ControllableIntersectionObserver.instances = [];
+    const onLoad = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const renderLoader = (pageProgress: number) => {
+      root.render(
+        <AutoPageLoader
+          hasNextPage
+          isFetching={false}
+          pageScope="scope"
+          pageProgress={pageProgress}
+          onLoad={() => onLoad(pageProgress)}
+        />,
+      );
+    };
+
+    await act(async () => {
+      renderLoader(1);
+    });
+
+    const firstObserver = ControllableIntersectionObserver.instances[0];
+    if (!firstObserver) throw new Error("IntersectionObserver was not created");
+    await act(async () => {
+      firstObserver.emit(true);
+      firstObserver.emit(true);
+    });
+    expect(onLoad).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      renderLoader(1);
+    });
+    const secondObserver = ControllableIntersectionObserver.instances[1];
+    if (!secondObserver) throw new Error("observer was not rebuilt");
+    expect(firstObserver.disconnected).toBe(true);
+    await act(async () => {
+      secondObserver.emit(false);
+      secondObserver.emit(true);
+    });
+    expect(onLoad).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      renderLoader(2);
+    });
+    const thirdObserver = ControllableIntersectionObserver.instances[2];
+    if (!thirdObserver) throw new Error("observer was not rebuilt for progress");
+    expect(secondObserver.disconnected).toBe(true);
+    await act(async () => {
+      secondObserver.emit(true);
+      thirdObserver.emit(true);
+    });
+    expect(onLoad).toHaveBeenCalledTimes(2);
+    expect(onLoad).toHaveBeenLastCalledWith(2);
+
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("rearms when the page scope changes even if progress repeats", async () => {
+    vi.stubGlobal("IntersectionObserver", ControllableIntersectionObserver);
+    ControllableIntersectionObserver.instances = [];
+    const onLoad = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const renderLoader = (pageScope: string, pageProgress: number) => {
+      root.render(
+        <AutoPageLoader
+          hasNextPage
+          isFetching={false}
+          pageScope={pageScope}
+          pageProgress={pageProgress}
+          onLoad={() => onLoad(`${pageScope}:${pageProgress}`)}
+        />,
+      );
+    };
+
+    await act(async () => renderLoader("scope-a", 1));
+    const firstObserver = ControllableIntersectionObserver.instances[0];
+    if (!firstObserver) throw new Error("IntersectionObserver was not created");
+    await act(async () => firstObserver.emit(true));
+    expect(onLoad).toHaveBeenCalledTimes(1);
+
+    await act(async () => renderLoader("scope-b", 1));
+    const secondObserver = ControllableIntersectionObserver.instances[1];
+    if (!secondObserver) throw new Error("observer was not rebuilt for scope");
+    expect(firstObserver.disconnected).toBe(true);
+    await act(async () => secondObserver.emit(true));
+    expect(onLoad).toHaveBeenCalledTimes(2);
+    expect(onLoad).toHaveBeenLastCalledWith("scope-b:1");
+
+    await act(async () => root.unmount());
+    container.remove();
   });
 });
