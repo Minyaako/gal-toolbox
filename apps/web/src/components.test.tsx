@@ -18,6 +18,7 @@ import {
   StatePanel,
 } from "./components";
 import { SettingsProvider } from "./app/settings";
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "./app/settings";
 import { entityPath, type EntitySummary } from "./api";
 
 class ControllableIntersectionObserver {
@@ -302,6 +303,18 @@ describe("artist intent prefetch policy", () => {
     ]);
     await act(async () => root.unmount());
     container.remove();
+  });
+
+  it("cancels hover on leave, starts immediately on focus, and prefetches aggressively", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ items: [], page: 1, pageSize: 12, more: false }), { status: 200, headers: { "Content-Type": "application/json" } })); vi.stubGlobal("fetch", fetcher);
+    const container = document.createElement("div"); document.body.append(container); const root = createRoot(container); const artist: EntitySummary = { ...entity, id: "s223", type: "staff" };
+    await act(async () => root.render(<Providers><ArtistPrefetchLink staff={artist}>Artist</ArtistPrefetchLink></Providers>)); const link = container.querySelector<HTMLAnchorElement>("a")!;
+    await act(async () => { link.dispatchEvent(new PointerEvent("pointerover", { bubbles: true })); link.dispatchEvent(new PointerEvent("pointerout", { bubbles: true })); }); await vi.advanceTimersByTimeAsync(150); expect(fetcher).not.toHaveBeenCalled();
+    await act(async () => link.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))); await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    await act(async () => root.unmount()); container.remove();
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...DEFAULT_SETTINGS, prefetch: "aggressive" })); const aggressive = document.createElement("div"); document.body.append(aggressive); const aggressiveRoot = createRoot(aggressive);
+    await act(async () => aggressiveRoot.render(<Providers><ArtistPrefetchLink staff={{ ...artist, id: "s224" }}>Artist</ArtistPrefetchLink></Providers>)); await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4)); await act(async () => aggressiveRoot.unmount()); aggressive.remove(); localStorage.removeItem(SETTINGS_STORAGE_KEY);
   });
 });
 

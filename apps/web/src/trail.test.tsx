@@ -18,4 +18,8 @@ describe("path-aware exploration trails", () => {
   it("migrates legacy entity-only storage to its stable entity path", () => {
     expect(normalizeTrail([staff])).toEqual([{ entity: staff, path: "/knowledge/staff/s1928" }]);
   });
+
+  it("rejects malformed stored items instead of exposing dereferenceable trail entries", () => {
+    expect(normalizeTrail([{ entity: {}, path: "/knowledge/artist/s1928" }, { id: "s1" }, null])).toEqual([]);
+  });
 });

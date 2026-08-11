@@ -56,6 +56,7 @@ export function VnPage() {
       </header>
 
       <div className="detail-relations">
+      <div className="detail-primary-stack">
       <section className="detail-section relation-primary">
         <SectionHeading index="01" title="角色与声优" note="点击任意一侧都可以继续探索。" />
         {vn.cast.length ? (
@@ -85,13 +86,14 @@ export function VnPage() {
           {vn.artists.map(({ staff, credits }) => <article className="artist-relation-card" key={staff.id}>
             <ArtistPrefetchLink staff={staff} className="cast-person staff">
               <span className="staff-monogram">{staff.name.primary.slice(0, 1)}</span>
-              <span><b>{staff.name.primary}</b><small>{staff.name.romanized}</small></span>
+              <span><b>{staff.name.primary}</b>{staff.name.original ? <small>{staff.name.original}</small> : null}<small>{staff.name.romanized}</small></span>
             </ArtistPrefetchLink>
             <ArtistCredits credits={credits} />
           </article>)}
         </div>
       </section> : null}
 
+      </div>
       {visibleTags.length || vn.relations.length ? <RelationRail>
       {visibleTags.length ? (
         <section className="detail-section tag-section relation-rail-card">

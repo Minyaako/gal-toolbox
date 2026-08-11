@@ -195,6 +195,7 @@
 }
 .detail-relations .detail-section { padding: 0; }
 .detail-relations.is-single { grid-template-columns: minmax(0, 1fr); }
+.detail-primary-stack { display: grid; gap: 16px; min-width: 0; }
 .relation-rail { position: sticky; top: 18px; display: grid; gap: 16px; }
 .relation-rail-card {
   padding: 22px !important;

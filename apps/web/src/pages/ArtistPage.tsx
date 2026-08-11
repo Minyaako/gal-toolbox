@@ -29,13 +29,13 @@ export function ArtistPage() {
   useEffect(() => { if (detail.data) visit(detail.data.entity, artistPath(detail.data.entity.id)); }, [detail.data, visit]);
 
   if (detail.isPending) return <LoadingScene headingLevel={1} title="正在打开画师资料" />;
-  if (detail.isError) return <StatePanel headingLevel={1} title="画师资料加载失败" tone="error"><p>{detail.error.message}</p></StatePanel>;
+  if (detail.isError) return <StatePanel headingLevel={1} title="画师资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
   const artist = detail.data;
   return <article className="detail-page entity-detail detail-artist">
     <header className="staff-hero"><div className="staff-glyph" aria-hidden="true">{artist.entity.name.primary.slice(0, 1)}</div><div className="detail-intro">
       <div className="record-id">VNDB / {artist.entity.id}</div><NameBlock entity={artist.entity} headingLevel={1} kindLabel="画师" />
       {artist.aliases.length ? <div className="alias-cloud">{artist.aliases.map((alias, index) => <span key={`${alias.name}-${index}`}>{alias.name}</span>)}</div> : null}
-      {artist.description ? <p className="description">{artist.description}</p> : null}
+      {artist.description ? <p className="description">{artist.description}</p> : <p className="description is-muted">VNDB 暂无画师简介。</p>}
     </div></header>
     <div className="detail-relations is-single"><section className="detail-section relation-primary">
       <SectionHeading index="01" title="参与作品" />

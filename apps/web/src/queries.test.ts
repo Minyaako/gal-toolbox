@@ -172,6 +172,18 @@ describe("intent prefetch", () => {
     expect(startedIds).toEqual(["v1", "v2", "v3", "v4"]);
   });
 
+  it("shares the three-slot intent budget between VN and artist prefetches", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let release!: () => void; const gate = new Promise<void>((resolve) => { release = resolve; }); const started: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input) => { started.push(String(input)); await gate; return new Response(JSON.stringify(String(input).includes("/artists/") ? (String(input).includes("/vns?") ? artistWorks : artistDetail) : vnDetail), { status: 200, headers: { "Content-Type": "application/json" } }); }));
+    const artist2 = { ...artistEntity, id: "s2" }; const artist3 = { ...artistEntity, id: "s3" }; const fourth = { ...artistEntity, id: "s4" };
+    const pending = [prefetchEntity(client, vnEntity, vi.fn()), prefetchArtist(client, artist2, vi.fn()), prefetchArtist(client, artist3, vi.fn()), prefetchArtist(client, fourth, vi.fn())];
+    await vi.waitFor(() => expect(started).toHaveLength(5));
+    expect(started.some((url) => url.includes("/artists/s4"))).toBe(false);
+    release(); await Promise.all(pending); await prefetchArtist(client, fourth, vi.fn());
+    expect(started.some((url) => url.includes("/artists/s4"))).toBe(true);
+  });
+
   it("deduplicates concurrent VN requests and preloads the returned cover", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
