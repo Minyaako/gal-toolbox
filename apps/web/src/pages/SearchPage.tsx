@@ -2,13 +2,14 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getSearchPage, type EntityType } from "../api";
+import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, SectionHeading, StatePanel } from "../components";
 
 const tabs: Array<{ value: EntityType; label: string; hint: string }> = [
   { value: "vn", label: "作品", hint: "标题、别名或 VNDB ID" },
   { value: "character", label: "角色", hint: "角色原名、罗马字或 ID" },
   { value: "staff", label: "声优", hint: "本名、艺名或 staff ID" },
-  { value: "tag", label: "Tag", hint: "题材、内容或技术标签" },
+  { value: "tag", label: "Tag", hint: "中文或英文题材、内容与技术标签" },
 ];
 
 export function SearchPage() {
@@ -24,6 +25,13 @@ export function SearchPage() {
     getNextPageParam: (lastPage) => (lastPage.more ? lastPage.page + 1 : undefined),
     enabled: Boolean(query),
   });
+  const buffered = useBufferedPages({
+    scope: `search:${type}:${query}`,
+    pages: search.data?.pages ?? [],
+    hasNextPage: search.hasNextPage,
+    isFetchingNextPage: search.isFetchingNextPage,
+    fetchNextPage: search.fetchNextPage,
+  });
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -35,36 +43,44 @@ export function SearchPage() {
     setParams(query ? { type: next, q: query } : { type: next });
   }
 
-  const items = search.data?.pages.flatMap((page) => page.items) ?? [];
+  const items = buffered.items;
 
   return (
     <>
-      <section className="search-hero" aria-labelledby="search-title">
+      <section className="search-hero knowledge-search-hero" aria-labelledby="search-title">
         <div className="hero-kicker"><span>01</span> VNDB visual association search</div>
-        <h1 id="search-title">从一个名字，<br />顺着关系找到下一张脸。</h1>
+        <h1 id="search-title">从一个名字，<br />翻开整条关系链。</h1>
         <p>搜索作品、角色或声优。每一次点击都会保留为可返回的探索路径。</p>
 
         <form className="search-console" onSubmit={submit}>
-          <div className="search-tabs" role="tablist" aria-label="搜索类型">
-            {tabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                role="tab"
-                aria-selected={type === tab.value}
-                onClick={() => changeType(tab.value)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <fieldset className="search-type-group">
+            <legend>搜索类型</legend>
+            <div className="search-tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  aria-pressed={type === tab.value}
+                  onClick={() => changeType(tab.value)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
           <label htmlFor="knowledge-search">{tabs.find((tab) => tab.value === type)?.hint}</label>
           <div className="search-row">
             <input
               id="knowledge-search"
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder={type === "vn" ? "试试 Ever17、时空轮回或 v17" : "输入名称或 VNDB ID"}
+              placeholder={
+                type === "vn"
+                  ? "试试 Ever17、时空轮回或 v17"
+                  : type === "tag"
+                    ? "试试 悬疑、时间旅行或 g19"
+                    : "输入名称或 VNDB ID"
+              }
               autoComplete="off"
             />
             <button type="submit">开始查找</button>
@@ -72,7 +88,7 @@ export function SearchPage() {
         </form>
       </section>
 
-      <section className="results-section" aria-live="polite">
+      <section className="results-section knowledge-results" aria-live="polite">
         <SectionHeading
           index="02"
           title={query ? `“${query}”的搜索结果` : "等待一个起点"}
@@ -96,10 +112,11 @@ export function SearchPage() {
               {items.map((entity) => <EntityCard key={entity.id} entity={entity} />)}
             </div>
             <AutoPageLoader
-              hasNextPage={search.hasNextPage}
-              isFetching={search.isFetchingNextPage}
-              onLoad={() => void search.fetchNextPage()}
-              label="继续浏览搜索结果"
+              hasNextPage={buffered.canRevealNextPage}
+              isFetching={buffered.isWaitingForBuffer}
+              buffered={buffered.hasBufferedPage}
+              onLoad={() => void buffered.revealNextPage()}
+              label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览搜索结果"}
             />
           </>
         ) : (

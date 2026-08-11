@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
-import { entityPath, getVn } from "../api";
-import { EntityCard, EntityImage, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
+import { type ReactNode, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { EntityCard, EntityImage, EntityPrefetchLink, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
+import { vnQuery } from "../queries";
+import { getSecondaryName } from "../tag-label";
 
 const relationLabels: Record<string, string> = {
   ser: "同系列",
@@ -18,26 +19,33 @@ const relationLabels: Record<string, string> = {
   fan: "衍生作品",
 };
 
+export function RelationRail({ children }: { children: ReactNode }) {
+  return <div className="relation-rail">{children}</div>;
+}
+
 export function VnPage() {
   const { id = "" } = useParams();
-  const query = useQuery({ queryKey: ["vn", id], queryFn: () => getVn(id), enabled: Boolean(id) });
+  const query = useQuery({ ...vnQuery(id), enabled: Boolean(id) });
   const { visit } = useTrail();
 
   useEffect(() => {
     if (query.data) visit(query.data.entity);
   }, [query.data, visit]);
 
-  if (query.isPending) return <LoadingScene title="正在打开作品档案" note="封面、配音关系和 Tag 正在汇合。" />;
-  if (query.isError) return <StatePanel title="作品资料加载失败" tone="error"><p>{query.error.message}</p></StatePanel>;
+  if (query.isPending) return <LoadingScene headingLevel={1} title="正在打开作品档案" note="封面、配音关系和 Tag 正在汇合。" />;
+  if (query.isError) return <StatePanel headingLevel={1} title="作品资料加载失败" tone="error"><p>{query.error.message}</p><button type="button" onClick={() => query.refetch()}>重新加载</button></StatePanel>;
 
   const vn = query.data;
+  const visibleTags = vn.tags
+    .filter((item) => item.spoiler === 0 && item.category !== "ero")
+    .slice(0, 24);
   return (
-    <article className="detail-page">
+    <article className="detail-page entity-detail detail-vn">
       <header className="detail-hero">
         <EntityImage image={vn.entity.image} alt={vn.entity.name.primary} className="detail-cover" eager />
         <div className="detail-intro">
           <div className="record-id">VNDB / {vn.entity.id}</div>
-          <NameBlock entity={vn.entity} />
+          <NameBlock entity={vn.entity} headingLevel={1} />
           <dl className="fact-strip">
             <div><dt>发售</dt><dd>{vn.released ?? "未知"}</dd></div>
             <div><dt>评分</dt><dd>{vn.rating ? (vn.rating / 10).toFixed(2) : "—"}</dd></div>
@@ -47,51 +55,64 @@ export function VnPage() {
         </div>
       </header>
 
-      <section className="detail-section">
+      <div className="detail-relations">
+      <section className="detail-section relation-primary">
         <SectionHeading index="01" title="角色与声优" note="点击任意一侧都可以继续探索。" />
         {vn.cast.length ? (
           <div className="cast-list">
             {vn.cast.map((pair, index) => (
               <article className="cast-pair" key={`${pair.character.id}-${pair.staff.id}-${index}`}>
-                <Link className="cast-person character" to={entityPath(pair.character)} aria-label={`打开角色：${pair.character.name.primary}`}>
+                <EntityPrefetchLink className="cast-person character" entity={pair.character} aria-label={`打开角色：${pair.character.name.primary}`}>
                   <EntityImage image={pair.character.image} alt="" />
                   <span><b>{pair.character.name.primary}</b><small>{pair.character.name.romanized}</small></span>
-                </Link>
+                </EntityPrefetchLink>
                 <div className="voice-link"><span>配音</span><i aria-hidden="true">→</i></div>
-                <Link className="cast-person staff" to={entityPath(pair.staff)} aria-label={`打开声优：${pair.staff.name.primary}`}>
+                <EntityPrefetchLink className="cast-person staff" entity={pair.staff} aria-label={`打开声优：${pair.staff.name.primary}`}>
                   <span className="staff-monogram">{pair.staff.name.primary.slice(0, 1)}</span>
                   <span><b>{pair.staff.name.primary}</b><small>{pair.staff.name.romanized}</small></span>
-                </Link>
+                </EntityPrefetchLink>
               </article>
             ))}
           </div>
         ) : <StatePanel title="该作品暂无配音关系" />}
       </section>
 
-      {vn.tags.some((item) => item.spoiler === 0 && item.category !== "ero") ? (
-        <section className="detail-section tag-section">
-          <SectionHeading index="02" title="继续沿 Tag 探索" note="首版使用 VNDB 原始 Tag；中文翻译层将在后续接入。" />
+      {visibleTags.length || vn.relations.length ? <RelationRail>
+      {visibleTags.length ? (
+        <section className="detail-section tag-section relation-rail-card">
+          <SectionHeading index="02" title="继续沿 Tag 探索" note="中文来自 VNDB Profile Search，英文保留用于定位。" />
           <div className="tag-cloud">
-            {vn.tags
-              .filter((item) => item.spoiler === 0 && item.category !== "ero")
-              .slice(0, 24)
-              .map((item) => (
-                <Link key={item.tag.id} to={entityPath(item.tag)}>
-                  <span>#</span>{item.tag.name.primary}<small>{item.rating.toFixed(1)}</small>
-                </Link>
-              ))}
+            {visibleTags.map((item) => {
+                const secondary = getSecondaryName(item.tag.name);
+                return (
+                  <EntityPrefetchLink
+                    key={item.tag.id}
+                    entity={item.tag}
+                    aria-label={secondary ? `${item.tag.name.primary}，${secondary}` : item.tag.name.primary}
+                  >
+                    <span className="tag-mark">#</span>
+                    <span className="tag-name">
+                      <b>{item.tag.name.primary}</b>
+                      {secondary ? <em lang="en">{secondary}</em> : null}
+                    </span>
+                    <small>{item.rating.toFixed(1)}</small>
+                  </EntityPrefetchLink>
+                );
+              })}
           </div>
         </section>
       ) : null}
 
       {vn.relations.length ? (
-        <section className="detail-section">
+        <section className="detail-section relation-rail-card">
           <SectionHeading index="03" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
           <div className="entity-grid compact-grid">
             {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} />)}
           </div>
         </section>
       ) : null}
+      </RelationRail> : null}
+      </div>
     </article>
   );
 }

@@ -32,7 +32,16 @@ describe("VNDB formatting", () => {
 
 describe("tag mapping", () => {
   it("maps a VNDB tag into the shared entity shape", () => {
-    expect(mapTagSummary({ id: "g7", name: "Mystery", aliases: ["Mysteries"] }))
-      .toMatchObject({ id: "g7", type: "tag", name: { primary: "Mystery" }, image: null });
+    expect(mapTagSummary({ id: "g19", name: "Mystery", aliases: ["Mysteries"] }))
+      .toMatchObject({
+        id: "g19",
+        type: "tag",
+        name: {
+          primary: "悬疑",
+          original: "Mystery",
+          alternatives: ["Mysteries"],
+        },
+        image: null,
+      });
   });
 });

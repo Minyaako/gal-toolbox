@@ -5,6 +5,7 @@ import type {
   EntityName,
   EntitySummary,
 } from "./types.js";
+import { localizeTagName } from "./tag-localization.js";
 
 const VNDB_API = "https://api.vndb.org/kana";
 
@@ -251,12 +252,7 @@ export function mapTagSummary(tag: RawTag): EntitySummary {
   return {
     id: tag.id,
     type: "tag",
-    name: {
-      primary: tag.name,
-      original: null,
-      romanized: null,
-      alternatives: unique(tag.aliases ?? []).filter((value) => value !== tag.name),
-    },
+    name: localizeTagName(tag.id, tag.name, tag.aliases),
     image: null,
   };
 }

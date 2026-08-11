@@ -5,6 +5,7 @@ coverage/
 *.log
 .env
 .playwright-cli/
+.worktrees/
 data/*.sqlite
 data/*.sqlite-*
 apps/api/data/

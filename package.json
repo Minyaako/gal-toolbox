@@ -7,7 +7,9 @@
     "dev": "concurrently -k -n api,web -c blue,magenta \"npm run dev -w @gal-toolbox/api\" \"npm run dev -w @gal-toolbox/web\"",
     "build": "npm run build -w @gal-toolbox/web && npm run build -w @gal-toolbox/api",
     "typecheck": "npm run typecheck -w @gal-toolbox/api && npm run typecheck -w @gal-toolbox/web",
-    "test": "npm run test -w @gal-toolbox/api && npm run test -w @gal-toolbox/web"
+    "sync:tag-translations": "node scripts/sync-tag-translations.mjs",
+    "test:tag-translations": "node --test scripts/tag-translation-generator.test.mjs",
+    "test": "npm run test:tag-translations && npm run test -w @gal-toolbox/api && npm run test -w @gal-toolbox/web"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

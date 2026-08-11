@@ -25,13 +25,16 @@
 5. 搜索类型增加 Tag；VN 详情展示无剧透、非成人 Tag。
 6. Tag 详情分页显示相关 VN，可继续进入作品关系链。
 7. `/api/v1/openapi.json` 返回 OpenAPI 3.1 文档，`/api/docs` 提供可读入口。
+8. 列表后台始终多缓存一页，一次滚动只揭示一页。
+9. 卡片在 pointerenter、focus 和 pointerdown 时预取目标详情与关键图片。
+10. Tag 使用简体中文优先显示，并支持中文搜索和英文回退。
 
 ## Data model impact
 
 - `EntityType` 增加 `tag`。
 - `VnDetail` 增加 `tags`，每项包含 Tag、rating 和 spoiler。
 - 新增 Tag detail 与 Tag→VN 分页 DTO。
-- 前端中文 Tag 通过未来可替换的翻译层实现；本轮只使用 VNDB 原始名称。
+- 中文 Tag 来自 VNDB Profile Search 的 CC BY 4.0 翻译，以生成式 ID 映射接入；英文原名保留在稳定 DTO 中。
 
 ## UI impact
 
@@ -45,12 +48,15 @@
 - 图片加载前后卡片尺寸不变化，失败时有占位内容。
 - 搜索/声优/Tag 列表单页最多 12 条，并能在接近底部时自动取下一页。
 - 手动加载按钮仍可用，自动加载不会并发重复请求。
+- 首屏可请求两页但只显示 12 条；揭示缓存页后再准备后一页。
+- hover、键盘 focus 和触屏 pointerdown 预取复用路由查询缓存。
+- 中文 Tag 可直接搜索，缺失翻译时回退英文。
 - VN 详情能点击 Tag；Tag 页面能返回相关 VN。
 - OpenAPI JSON 含全部公开 v1 路径和核心 schema。
 - 类型检查、测试、生产构建、真实浏览器桌面和移动验证通过。
 
 ## Open questions
 
-- 中文 Tag 翻译数据的最终授权和更新机制。
+- 中文 Tag 翻译的自动更新频率与人工校对流程。
 - 生产环境是否将图片 URL 交由独立图片代理/CDN 做缩略图和格式转换。
 

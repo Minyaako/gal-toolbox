@@ -38,7 +38,7 @@ type Page<T> = {
 };
 ```
 
-名称 `primary` 的选择顺序为：简体中文、繁体中文、原文、VNDB 罗马字显示名。
+名称 `primary` 的选择顺序为：简体中文、繁体中文、原文、VNDB 罗马字显示名。Tag 有翻译时以简体中文为 `primary`，VNDB 英文原名放在 `original`。
 
 ## Endpoints
 
@@ -48,7 +48,7 @@ type Page<T> = {
 
 ### `GET /search?type=vn|character|staff|tag&q=...&page=1&pageSize=12`
 
-返回 `Page<EntitySummary>`。默认每页 12 条；`q` 长度为 1–120，`pageSize` 为 1–50。
+返回 `Page<EntitySummary>`。默认每页 12 条；`q` 长度为 1–120，`pageSize` 为 1–50。Tag 同时支持 VNDB 英文名称和本地简体中文名称搜索。
 
 ### `GET /vns/:id`
 
@@ -76,7 +76,7 @@ type Page<T> = {
 
 ### `GET /tags/:id`
 
-返回 Tag 名称、说明、分类和关联作品数量。首版名称来自 VNDB 原始英文数据。
+返回 Tag 名称、说明、分类和关联作品数量。中文翻译存在时优先返回中文，并保留 VNDB 英文原名；缺少翻译时退回英文。
 
 ### `GET /tags/:id/vns?page=1&pageSize=12`
 
@@ -100,4 +100,6 @@ type Page<T> = {
 
 常见 code：`BAD_REQUEST`、`NOT_FOUND`、`UPSTREAM_RATE_LIMITED`、`UPSTREAM_UNAVAILABLE`、`INTERNAL_ERROR`。
 
-响应可能包含 `X-Cache: HIT | MISS | STALE`，仅用于诊断，不属于业务逻辑。
+响应可能包含 `X-Cache: HIT | MISS | STALE | LOCAL`，仅用于诊断，不属于业务逻辑；`LOCAL` 表示结果来自内置中文 Tag 索引。
+
+搜索和分页响应使用 `Cache-Control: public, max-age=60`，实体详情响应使用 `public, max-age=300`。

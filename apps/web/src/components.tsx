@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import type { FocusEventHandler, PointerEventHandler, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   entityPath,
@@ -7,6 +8,9 @@ import {
   type EntitySummary,
   type EntityType,
 } from "./api";
+import { advanceIntersectionLatch } from "./buffered-pages";
+import { useSettings, type PrefetchPreference } from "./app/settings";
+import { prefetchEntity } from "./queries";
 
 const labels: Record<EntityType, string> = {
   vn: "作品",
@@ -14,6 +18,28 @@ const labels: Record<EntityType, string> = {
   staff: "声优 / 制作人员",
   tag: "Tag",
 };
+
+type ImageStatus = "loading" | "loaded" | "error";
+type ImageLoadState = { source: string | null; status: ImageStatus };
+
+export function imagePresentation(image: EntityImageType, alt: string): {
+  kind: "image" | "fallback";
+  alt: string;
+  fallbackText: string;
+} {
+  return {
+    kind: image ? "image" : "fallback",
+    alt,
+    fallbackText: alt.trim().slice(0, 1) || "?",
+  };
+}
+
+export function imageLoadStatus(
+  state: ImageLoadState,
+  resolvedSource: string | null,
+): ImageStatus {
+  return state.source === resolvedSource ? state.status : "loading";
+}
 
 export function EntityImage({
   image,
@@ -28,19 +54,25 @@ export function EntityImage({
   fallbackText?: string;
   eager?: boolean;
 }) {
-  const [revealed, setRevealed] = useState(false);
-  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const { settings } = useSettings();
+  const [revealedSource, setRevealedSource] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<ImageLoadState>({
+    source: null,
+    status: "loading",
+  });
   const sensitive = Boolean(image && (image.sexual >= 1 || image.violence >= 1));
+  const eagerBrowserLoad = eager && settings.imageQuality !== "data-saver";
+  const source = (settings.imageQuality === "high"
+    ? image?.url
+    : image?.thumbnailUrl ?? image?.url) ?? null;
+  const status = imageLoadStatus(loadState, source);
+  const presentation = imagePresentation(status === "error" ? null : image, alt);
+  const revealed = revealedSource === source;
 
-  useEffect(() => {
-    setStatus("loading");
-    setRevealed(false);
-  }, [image?.url]);
-
-  if (!image || status === "error") {
+  if (presentation.kind === "fallback" || !source) {
     return (
-      <div className={`entity-image image-fallback ${className}`} aria-label={`${alt} 暂无图片`}>
-        <span>{fallbackText ?? alt.slice(0, 1)}</span>
+      <div className={`entity-image image-fallback ${className}`} aria-label={`${presentation.alt} 暂无图片`}>
+        <span>{fallbackText ?? presentation.fallbackText}</span>
       </div>
     );
   }
@@ -50,16 +82,16 @@ export function EntityImage({
       <span className="image-loading-skeleton" aria-hidden="true" />
       <img
         className={`entity-image ${sensitive && !revealed ? "is-sensitive" : ""}`}
-        src={image.thumbnailUrl ?? image.url}
+        src={source}
         alt={alt}
-        loading={eager ? "eager" : "lazy"}
-        fetchPriority={eager ? "high" : "auto"}
+        loading={eagerBrowserLoad ? "eager" : "lazy"}
+        fetchPriority={eagerBrowserLoad ? "high" : "auto"}
         decoding="async"
-        onLoad={() => setStatus("loaded")}
-        onError={() => setStatus("error")}
+        onLoad={() => setLoadState({ source, status: "loaded" })}
+        onError={() => setLoadState({ source, status: "error" })}
       />
       {sensitive && !revealed ? (
-        <button className="reveal-image" type="button" onClick={() => setRevealed(true)}>
+        <button className="reveal-image" type="button" onClick={() => setRevealedSource(source)}>
           显示分级图片
         </button>
       ) : null}
@@ -67,11 +99,21 @@ export function EntityImage({
   );
 }
 
-export function NameBlock({ entity, compact = false }: { entity: EntitySummary; compact?: boolean }) {
+export function NameBlock({
+  entity,
+  compact = false,
+  headingLevel = 2,
+}: {
+  entity: EntitySummary;
+  compact?: boolean;
+  headingLevel?: 1 | 2;
+}) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+
   return (
     <div className={`name-block ${compact ? "is-compact" : ""}`}>
       <span className="entity-kind">{labels[entity.type]}</span>
-      <h2>{entity.name.primary}</h2>
+      <Heading>{entity.name.primary}</Heading>
       {entity.name.original ? <p>{entity.name.original}</p> : null}
       {entity.name.romanized ? <p lang="ja-Latn">{entity.name.romanized}</p> : null}
     </div>
@@ -87,7 +129,11 @@ export function EntityCard({
 }) {
   return (
     <article className={`entity-card entity-${entity.type}`}>
-      <Link to={entityPath(entity)} className="card-link" aria-label={`打开${labels[entity.type]}：${entity.name.primary}`}>
+      <EntityPrefetchLink
+        entity={entity}
+        className="card-link"
+        aria-label={`打开${labels[entity.type]}：${entity.name.primary}`}
+      >
         <EntityImage
           image={entity.image}
           alt={entity.name.primary}
@@ -97,25 +143,76 @@ export function EntityCard({
           <NameBlock entity={entity} compact />
           {meta ? <div className="card-meta">{meta}</div> : null}
         </div>
-      </Link>
+      </EntityPrefetchLink>
     </article>
   );
+}
+
+type EntityPrefetchHandlers = {
+  onPointerEnter?: PointerEventHandler<HTMLAnchorElement>;
+  onFocus?: FocusEventHandler<HTMLAnchorElement>;
+  onPointerDown: PointerEventHandler<HTMLAnchorElement>;
+};
+
+export function entityPrefetchHandlers(
+  preference: PrefetchPreference,
+  prefetch: () => void,
+): EntityPrefetchHandlers {
+  const prefetchOnIntent = preference === "data-saver" ? undefined : prefetch;
+  return {
+    onPointerEnter: prefetchOnIntent,
+    onFocus: prefetchOnIntent,
+    onPointerDown: prefetch,
+  };
+}
+
+export function EntityPrefetchLink({
+  entity,
+  className,
+  children,
+  "aria-label": ariaLabel,
+}: {
+  entity: EntitySummary;
+  className?: string;
+  children: ReactNode;
+  "aria-label"?: string;
+}) {
+  const queryClient = useQueryClient();
+  const { settings } = useSettings();
+  const prefetch = useCallback(() => {
+    void prefetchEntity(queryClient, entity);
+  }, [entity, queryClient]);
+
+  useEffect(() => {
+    if (settings.prefetch === "aggressive") prefetch();
+  }, [prefetch, settings.prefetch]);
+
+  return <Link
+    to={entityPath(entity)}
+    className={className}
+    aria-label={ariaLabel}
+    {...entityPrefetchHandlers(settings.prefetch, prefetch)}
+  >{children}</Link>;
 }
 
 export function StatePanel({
   title,
   children,
   tone = "neutral",
+  headingLevel = 2,
 }: {
   title: string;
   children?: ReactNode;
   tone?: "neutral" | "error";
+  headingLevel?: 1 | 2;
 }) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+
   return (
     <section className={`state-panel state-${tone}`} role={tone === "error" ? "alert" : "status"}>
       <span className="state-mark" aria-hidden="true">{tone === "error" ? "!" : "·"}</span>
       <div>
-        <h2>{title}</h2>
+        <Heading>{title}</Heading>
         {children}
       </div>
     </section>
@@ -152,11 +249,15 @@ export function LoadingScene({
   title = "正在调取资料",
   note = "先整理关系，再打开资料抽屉。",
   compact = false,
+  headingLevel = 2,
 }: {
   title?: string;
   note?: string;
   compact?: boolean;
+  headingLevel?: 1 | 2;
 }) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+
   return (
     <section className={`loading-scene ${compact ? "is-compact" : ""}`} role="status" aria-live="polite" aria-busy="true">
       <div className="loading-cabinet" aria-hidden="true">
@@ -165,7 +266,7 @@ export function LoadingScene({
       </div>
       <div className="loading-copy">
         <span>Association archive / loading</span>
-        <h2>{title}</h2>
+        <Heading>{title}</Heading>
         <p>{note}</p>
       </div>
     </section>
@@ -175,22 +276,31 @@ export function LoadingScene({
 export function AutoPageLoader({
   hasNextPage,
   isFetching,
+  buffered = false,
   onLoad,
   label = "继续加载",
 }: {
   hasNextPage: boolean;
   isFetching: boolean;
+  buffered?: boolean;
   onLoad: () => void;
   label?: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const autoLoadArmedRef = useRef(true);
 
   useEffect(() => {
     const target = sentinelRef.current;
     if (!target || !hasNextPage || isFetching) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) onLoad();
+        if (!entry) return;
+        const next = advanceIntersectionLatch(
+          autoLoadArmedRef.current,
+          entry.isIntersecting,
+        );
+        autoLoadArmedRef.current = next.armed;
+        if (next.shouldLoad) onLoad();
       },
       { rootMargin: "600px 0px" },
     );
@@ -200,7 +310,7 @@ export function AutoPageLoader({
 
   if (!hasNextPage) return null;
   return (
-    <div className={`auto-page-loader ${isFetching ? "is-fetching" : ""}`} ref={sentinelRef}>
+    <div className={`auto-page-loader ${isFetching ? "is-fetching" : ""} ${buffered ? "is-buffered" : ""}`} ref={sentinelRef}>
       <span aria-hidden="true"><i /><i /><i /></span>
       <button type="button" disabled={isFetching} onClick={onLoad}>
         {isFetching ? "正在准备下一页…" : label}

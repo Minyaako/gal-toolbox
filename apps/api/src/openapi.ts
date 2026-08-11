@@ -48,7 +48,7 @@ const errorResponse = {
 const cacheHeader = {
   "X-Cache": {
     description: "Persistent upstream cache status",
-    schema: { type: "string", enum: ["HIT", "MISS", "STALE"] },
+    schema: { type: "string", enum: ["HIT", "MISS", "STALE", "LOCAL"] },
   },
 } as const;
 
@@ -77,7 +77,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: {
     title: "Gal Toolbox API",
-    version: "1.1.0",
+    version: "1.2.0",
     description:
       "Stable API boundary for VNDB-powered visual association search. Frontends should depend on these DTOs instead of VNDB response shapes.",
   },
@@ -119,6 +119,8 @@ export const openApiDocument = {
       get: {
         tags: ["Search"],
         summary: "Search VNDB entities",
+        description:
+          "Tag searches also accept Simplified Chinese names from the bundled localization index.",
         parameters: [
           {
             name: "type",
