@@ -327,6 +327,7 @@ export function AutoPageLoader({
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const autoLoadArmedRef = useRef(true);
+  const lastAutoLoadProgressRef = useRef<number | null>(null);
 
   useEffect(() => {
     autoLoadArmedRef.current = true;
@@ -343,13 +344,19 @@ export function AutoPageLoader({
           entry.isIntersecting,
         );
         autoLoadArmedRef.current = next.armed;
-        if (next.shouldLoad) onLoad();
+        if (
+          next.shouldLoad &&
+          lastAutoLoadProgressRef.current !== pageProgress
+        ) {
+          lastAutoLoadProgressRef.current = pageProgress;
+          onLoad();
+        }
       },
       { rootMargin: "600px 0px" },
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [hasNextPage, isFetching, onLoad]);
+  }, [hasNextPage, isFetching, onLoad, pageProgress]);
 
   if (!hasNextPage) return null;
   return (
