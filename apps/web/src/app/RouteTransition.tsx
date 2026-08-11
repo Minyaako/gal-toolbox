@@ -50,6 +50,7 @@ export function transitionTiming(motion: MotionPreference): TransitionTiming {
 }
 
 export function routeLoadingLabel(pathname: string) {
+  if (/^\/knowledge\/artist\//.test(pathname)) return "正在准备画师资料";
   if (/^\/knowledge\/vn\//.test(pathname)) return "正在准备作品资料";
   if (/^\/knowledge\/character\//.test(pathname)) return "正在准备角色资料";
   if (/^\/knowledge\/staff\//.test(pathname)) return "正在准备声优资料";
@@ -61,7 +62,7 @@ export function routeLoadingLabel(pathname: string) {
 }
 
 function routeQueryKey(pathname: string): readonly [string, string] | null {
-  const match = pathname.match(/^\/knowledge\/(vn|character|staff|tag)\/([^/]+)/);
+  const match = pathname.match(/^\/knowledge\/(vn|character|staff|artist|tag)\/([^/]+)/);
   if (!match?.[1] || !match[2]) return null;
   return [match[1], decodeURIComponent(match[2])];
 }

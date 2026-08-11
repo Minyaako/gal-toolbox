@@ -4,13 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   entityPath,
+  type ArtistCredit,
+  type ArtistRole,
   type EntityImage as EntityImageType,
   type EntitySummary,
   type EntityType,
 } from "./api";
 import { advanceIntersectionLatch } from "./buffered-pages";
 import { useSettings, type PrefetchPreference } from "./app/settings";
-import { prefetchEntity, promoteEntity } from "./queries";
+import { prefetchArtist, prefetchEntity, promoteArtist, promoteEntity } from "./queries";
+import { artistPath } from "./app/navigation";
 
 const labels: Record<EntityType, string> = {
   vn: "作品",
@@ -105,16 +108,18 @@ export function NameBlock({
   entity,
   compact = false,
   headingLevel = 2,
+  kindLabel,
 }: {
   entity: EntitySummary;
   compact?: boolean;
   headingLevel?: 1 | 2;
+  kindLabel?: string;
 }) {
   const Heading = headingLevel === 1 ? "h1" : "h2";
 
   return (
     <div className={`name-block ${compact ? "is-compact" : ""}`}>
-      <span className="entity-kind">{labels[entity.type]}</span>
+      <span className="entity-kind">{kindLabel ?? labels[entity.type]}</span>
       <Heading>{entity.name.primary}</Heading>
       {entity.name.original ? <p>{entity.name.original}</p> : null}
       {entity.name.romanized ? <p lang="ja-Latn">{entity.name.romanized}</p> : null}
@@ -230,6 +235,30 @@ export function EntityPrefetchLink({
     aria-label={ariaLabel}
     {...intent.handlers}
   >{children}</Link>;
+}
+
+export function ArtistPrefetchLink({ staff, className, children, "aria-label": ariaLabel }: {
+  staff: EntitySummary; className?: string; children: ReactNode; "aria-label"?: string;
+}) {
+  const queryClient = useQueryClient();
+  const { settings } = useSettings();
+  const prefetch = useCallback(() => { void prefetchArtist(queryClient, staff); }, [queryClient, staff]);
+  const promote = useCallback(() => { void promoteArtist(staff.id); }, [staff.id]);
+  const intent = useMemo(() => createEntityPrefetchIntent(settings.prefetch, prefetch, promote), [prefetch, promote, settings.prefetch]);
+  useEffect(() => { if (settings.prefetch === "aggressive") prefetch(); }, [prefetch, settings.prefetch]);
+  useEffect(() => () => intent.dispose(), [intent]);
+  return <Link to={artistPath(staff.id)} className={className} aria-label={ariaLabel} {...intent.handlers}>{children}</Link>;
+}
+
+export const artistRoleLabels: Record<ArtistRole, string> = {
+  art: "原画／美术",
+  chardesign: "角色设计",
+};
+
+export function ArtistCredits({ credits }: { credits: ArtistCredit[] }) {
+  return <ul className="artist-credits">{credits.map((credit) => <li key={`${credit.role}:${credit.note ?? ""}`}>
+    <span>{artistRoleLabels[credit.role]}</span>{credit.note !== null ? <p>{credit.note}</p> : null}
+  </li>)}</ul>;
 }
 
 export function StatePanel({

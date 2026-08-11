@@ -56,6 +56,7 @@ const vn: VnDetail = {
     },
     note: null,
   }],
+  artists: [],
 };
 
 describe("RelationRail", () => {
@@ -70,6 +71,27 @@ describe("RelationRail", () => {
     expect(markup).toBe(
       '<div class="relation-rail"><section class="relation-rail-card">Tags</section><section class="relation-rail-card">Related works</section></div>',
     );
+  });
+});
+
+describe("artist relations", () => {
+  it("renders each artist once with ordered role labels and notes", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["vn", "v1"], { ...vn, artists: [{
+      staff: { id: "s1928", type: "staff", name: { primary: "画师", original: "原文", romanized: "Artist", alternatives: [] }, image: null },
+      credits: [{ role: "art", note: null }, { role: "chardesign", note: "Character sprites, BG" }],
+    }] });
+    const markup = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={["/knowledge/vn/v1"]}><SettingsProvider><TrailProvider><Routes><Route path="/knowledge/vn/:id" element={<VnPage />} /></Routes></TrailProvider></SettingsProvider></MemoryRouter></QueryClientProvider>);
+    expect(markup).toContain("/knowledge/artist/s1928");
+    expect(markup).toContain("原画／美术");
+    expect(markup).toContain("角色设计");
+    expect(markup).toContain("Character sprites, BG");
+  });
+
+  it("omits the artist section when no artist relation exists", () => {
+    const queryClient = new QueryClient(); queryClient.setQueryData(["vn", "v1"], vn);
+    const markup = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={["/knowledge/vn/v1"]}><SettingsProvider><TrailProvider><Routes><Route path="/knowledge/vn/:id" element={<VnPage />} /></Routes></TrailProvider></SettingsProvider></MemoryRouter></QueryClientProvider>);
+    expect(markup).not.toContain("原画与角色设计");
   });
 });
 

@@ -4,6 +4,8 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import {
+  getArtist,
+  getArtistVns,
   getCharacter,
   getSearchPage,
   getStaff,
@@ -13,6 +15,7 @@ import {
   getVn,
   type EntityType,
   type CharacterDetail,
+  type ArtistWork,
   type EntityImage,
   type EntitySummary,
   type Page,
@@ -59,6 +62,20 @@ export const tagVnsQuery = (
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.more ? lastPage.page + 1 : undefined,
+  });
+
+export const artistQuery = (id: string, priority: RequestPriority = "high") =>
+  queryOptions({ queryKey: ["artist", id], queryFn: ({ signal }) => getArtist(id, { signal, priority }) });
+
+export const artistVnsQuery = (
+  id: string,
+  getPriority: () => RequestPriority = () => "normal",
+) =>
+  infiniteQueryOptions({
+    queryKey: ["artist-vns", id],
+    queryFn: ({ pageParam, signal }) => getArtistVns(id, pageParam, 12, { signal, priority: getPriority() }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.more ? lastPage.page + 1 : undefined,
   });
 
 export const searchQuery = (
@@ -112,6 +129,47 @@ const preloadImages = (
 
 const activeIntentPrefetches = new WeakMap<QueryClient, Set<string>>();
 const MAX_ACTIVE_INTENT_PREFETCHES = 3;
+
+export async function promoteArtist(id: string): Promise<void> {
+  try {
+    const options = { priority: "high" as const, promotion: true };
+    await Promise.all([getArtist(id, options), getArtistVns(id, 1, 12, options)]);
+  } catch {
+    // The route queries remain the owner of visible success and error state.
+  }
+}
+
+export async function prefetchArtist(
+  queryClient: QueryClient,
+  staff: EntitySummary,
+  preload: (url: string) => void = preloadBrowserImage,
+): Promise<void> {
+  let active = activeIntentPrefetches.get(queryClient);
+  if (!active) {
+    active = new Set();
+    activeIntentPrefetches.set(queryClient, active);
+  }
+  const intentKey = `artist:${staff.id}`;
+  const ownsSlot = !active.has(intentKey);
+  if (ownsSlot && active.size >= MAX_ACTIVE_INTENT_PREFETCHES) return;
+  if (ownsSlot) active.add(intentKey);
+
+  try {
+    await Promise.all([
+      queryClient.prefetchQuery(artistQuery(staff.id, "low")),
+      queryClient.prefetchInfiniteQuery(artistVnsQuery(staff.id, () => "low")),
+    ]);
+    const works = queryClient.getQueryData<{ pages: Array<Page<ArtistWork>> }>(["artist-vns", staff.id]);
+    preloadImages(
+      works?.pages.flatMap((page) => page.items.map(({ vn }) => imageUrl(vn.image))) ?? [],
+      preload,
+    );
+  } catch {
+    // Intent prefetch is opportunistic; route-level queries own visible errors.
+  } finally {
+    if (ownsSlot) active.delete(intentKey);
+  }
+}
 
 export async function promoteEntity(entity: EntitySummary): Promise<void> {
   try {

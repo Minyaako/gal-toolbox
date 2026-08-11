@@ -20,3 +20,7 @@ export const mainNavigation: readonly NavigationItem[] = [
 export function knowledgeEntityPath(entity: Pick<EntitySummary, "id" | "type">): string {
   return `/knowledge/${entity.type}/${entity.id}`;
 }
+
+export function artistPath(id: string): string {
+  return `/knowledge/artist/${id}`;
+}

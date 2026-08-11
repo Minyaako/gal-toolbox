@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { EntityCard, EntityImage, EntityPrefetchLink, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
+import { ArtistCredits, ArtistPrefetchLink, EntityCard, EntityImage, EntityPrefetchLink, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
 import { vnQuery } from "../queries";
 import { getSecondaryName } from "../tag-label";
@@ -78,6 +78,19 @@ export function VnPage() {
           </div>
         ) : <StatePanel title="该作品暂无配音关系" />}
       </section>
+
+      {vn.artists.length ? <section className="detail-section artist-section">
+        <SectionHeading index="02" title="原画与角色设计" />
+        <div className="artist-relation-grid">
+          {vn.artists.map(({ staff, credits }) => <article className="artist-relation-card" key={staff.id}>
+            <ArtistPrefetchLink staff={staff} className="cast-person staff">
+              <span className="staff-monogram">{staff.name.primary.slice(0, 1)}</span>
+              <span><b>{staff.name.primary}</b><small>{staff.name.romanized}</small></span>
+            </ArtistPrefetchLink>
+            <ArtistCredits credits={credits} />
+          </article>)}
+        </div>
+      </section> : null}
 
       {visibleTags.length || vn.relations.length ? <RelationRail>
       {visibleTags.length ? (

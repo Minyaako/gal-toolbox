@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { entityPath } from "../api";
 import { useSettings } from "../app/settings";
 import { useTrail } from "../trail";
 
@@ -85,8 +84,8 @@ export function HomePage() {
         <p className="card-index">Recent trace</p>
         <h2 id="recent-title">最近探索</h2>
         {latest ? <>
-          <p>上次停在 <strong>{latest.name.primary}</strong>，探索轨迹中共有 {items.length} 个节点。</p>
-          <Link to={entityPath(latest)}>继续这条关系链 →</Link>
+          <p>上次停在 <strong>{latest.entity.name.primary}</strong>，探索轨迹中共有 {items.length} 个节点。</p>
+          <Link to={latest.path}>继续这条关系链 →</Link>
         </> : <p>还没有轨迹。打开图鉴后，走过的关系会留在这里。</p>}
       </aside>
 

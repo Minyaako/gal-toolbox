@@ -8,6 +8,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AutoPageLoader,
+  ArtistPrefetchLink,
   EntityCard,
   createEntityPrefetchIntent,
   imageLoadStatus,
@@ -262,6 +263,45 @@ describe("entity intent prefetch policy", () => {
     expect(keyboardPromote).toHaveBeenCalledTimes(1);
     promotedIntent.dispose();
     keyboardIntent.dispose();
+  });
+});
+
+describe("artist intent prefetch policy", () => {
+  it("delays hover, prefetches on focus, and promotes only once", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ items: [], page: 1, pageSize: 12, more: false }), {
+      status: 200, headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetcher);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const artist: EntitySummary = { ...entity, id: "s1928", type: "staff" };
+    await act(async () => root.render(<Providers><ArtistPrefetchLink staff={artist}>Artist</ArtistPrefetchLink></Providers>));
+    const link = container.querySelector<HTMLAnchorElement>("a");
+    if (!link) throw new Error("artist link was not rendered");
+
+    await act(async () => link.dispatchEvent(new PointerEvent("pointerover", { bubbles: true })));
+    await vi.advanceTimersByTimeAsync(149);
+    expect(fetcher).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    expect(fetcher.mock.calls.map(([url, init]) => [String(url), new Headers(init?.headers).get("X-Request-Priority")])).toEqual([
+      ["/api/v1/artists/s1928", "low"],
+      ["/api/v1/artists/s1928/vns?page=1&pageSize=12", "low"],
+    ]);
+
+    await act(async () => {
+      link.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(4));
+    expect(fetcher.mock.calls.slice(2).map(([url, init]) => [String(url), new Headers(init?.headers).get("X-Request-Priority")])).toEqual([
+      ["/api/v1/artists/s1928?_priorityPromotion=1", "high"],
+      ["/api/v1/artists/s1928/vns?page=1&pageSize=12&_priorityPromotion=1", "high"],
+    ]);
+    await act(async () => root.unmount());
+    container.remove();
   });
 });
 
