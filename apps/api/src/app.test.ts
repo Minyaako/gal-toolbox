@@ -172,6 +172,29 @@ describe("public API", () => {
     expect(workBody?.fields).toContain("staff{role,note");
   });
 
+  it("returns not found when an artist does not exist", async () => {
+    const app = await createTestApp((async () => new Response(JSON.stringify({
+      results: [],
+      more: false,
+    }), { status: 200, headers: { "Content-Type": "application/json" } })) as typeof fetch);
+
+    const response = await app.inject({ method: "GET", url: "/api/v1/artists/s404" });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ error: { code: "NOT_FOUND" } });
+  });
+
+  it("maps artist VNDB network failures to upstream unavailable", async () => {
+    const app = await createTestApp((async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch);
+
+    const response = await app.inject({ method: "GET", url: "/api/v1/artists/s1928/vns" });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({ error: { code: "UPSTREAM_UNAVAILABLE" } });
+  });
+
   it("aborts VNDB work when the browser disconnects", async () => {
     let upstreamSignal: AbortSignal | undefined;
     let signalRecorded!: () => void;

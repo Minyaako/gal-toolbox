@@ -31,6 +31,15 @@ describe("OpenAPI document", () => {
     ]));
   });
 
+  it("documents every error status reachable from artist handlers", () => {
+    for (const path of ["/artists/{id}", "/artists/{id}/vns"] as const) {
+      const responses = openApiDocument.paths[path].get.responses;
+      expect(responses).toHaveProperty("400");
+      expect(responses).toHaveProperty("429");
+      expect(responses).toHaveProperty("502");
+    }
+  });
+
   it("keeps the standalone docs page free of favicon requests", () => {
     expect(openApiDocsHtml()).toContain('<link rel="icon" href="data:,">');
   });
