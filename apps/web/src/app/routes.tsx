@@ -52,8 +52,8 @@ export const appRoutes: RouteObject[] = [{
 export function pageTitle(pathname: string): string {
   if (/^\/knowledge\/tag\/[^/]+$/.test(pathname)) return "Tag 图鉴";
   if (/^\/knowledge\/(vn|character|staff)\/[^/]+$/.test(pathname) || pathname === "/knowledge") return "知识图鉴";
-  if (pathname === "/ranking") return "排行榜";
+  if (pathname === "/ranking") return "Gal 排行";
   if (pathname === "/settings") return "设置";
-  if (pathname === "/") return "Gal 百宝箱";
+  if (pathname === "/") return "百宝箱大厅";
   return "页面未找到";
 }

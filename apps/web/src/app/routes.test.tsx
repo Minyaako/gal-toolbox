@@ -8,6 +8,12 @@ test("matches official knowledge routes and returns the literal Tag 图鉴 title
   expect(pageTitle("/knowledge/tag/g19")).toBe("Tag 图鉴");
 });
 
+test("returns the exact titles for the main routes", () => {
+  expect(pageTitle("/")).toBe("百宝箱大厅");
+  expect(pageTitle("/ranking")).toBe("Gal 排行");
+  expect(pageTitle("/settings")).toBe("设置");
+});
+
 test("legacy detail URLs and unknown paths match their explicit routes", () => {
   const legacy = matchRoutes(appRoutes, "/vn/v17")?.at(-1)?.route;
   expect(legacy?.path).toBe("/vn/:id");

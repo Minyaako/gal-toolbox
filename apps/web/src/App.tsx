@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation, useRoutes } from "react-router-dom";
-import { appRoutes } from "./app/routes";
+import { appRoutes, pageTitle } from "./app/routes";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -10,7 +10,15 @@ function ScrollToTop() {
   return null;
 }
 
+function DocumentTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    document.title = pageTitle(pathname);
+  }, [pathname]);
+  return null;
+}
+
 export function App() {
   const routes = useRoutes(appRoutes);
-  return <><ScrollToTop />{routes}</>;
+  return <><ScrollToTop /><DocumentTitle />{routes}</>;
 }
