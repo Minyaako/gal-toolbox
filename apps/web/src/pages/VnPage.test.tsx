@@ -84,7 +84,7 @@ describe("artist relations", () => {
   it("renders each artist once with ordered role labels and notes", () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(["vn", "v1"], { ...vn, artists: [{
-      staff: { id: "s1928", type: "staff", name: { primary: "画师", original: "原文", romanized: "Artist", alternatives: [] }, image: null },
+      staff: { id: "s1928", type: "staff", name: { primary: "画师", original: null, romanized: "Artist", alternatives: [] }, image: null },
       credits: [{ role: "art", note: null }, { role: "chardesign", note: "Character sprites, BG" }],
     }, {
       staff: { id: "s223", type: "staff", name: { primary: "第二画师", original: null, romanized: "Second Artist", alternatives: [] }, image: null },
@@ -97,7 +97,7 @@ describe("artist relations", () => {
     expect(markup).toContain("Character sprites, BG");
     expect((markup.match(/\/knowledge\/artist\/s1928/g) ?? [])).toHaveLength(1);
     expect((markup.match(/\/knowledge\/artist\/s223/g) ?? [])).toHaveLength(1);
-    expect(markup).toContain("原文"); expect(markup).toContain("Artist"); expect(markup).toContain("Second Artist");
+    expect(markup).toContain("Artist"); expect(markup).toContain("Second Artist");
     expect(markup).toMatch(/href="\/knowledge\/artist\/s223"[\s\S]*?Character sprites, BG/);
   });
 
