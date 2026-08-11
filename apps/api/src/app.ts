@@ -448,6 +448,15 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     ) {
       return reply;
     }
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return reply.code(504).send({
+        error: {
+          code: "UPSTREAM_TIMEOUT",
+          message: "VNDB 响应超时，请稍后重试。",
+          requestId: request.id,
+        },
+      });
+    }
     if (error instanceof VndbError) {
       const rateLimited = error.status === 429;
       return reply.code(rateLimited ? 429 : 502).send({

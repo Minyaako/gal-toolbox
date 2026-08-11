@@ -24,4 +24,20 @@ describe("OpenAPI document", () => {
       "X-Request-Priority": expect.any(Object),
     });
   });
+
+  it("documents timeout responses for every VNDB-backed operation", () => {
+    const paths = [
+      "/search",
+      "/vns/{id}",
+      "/characters/{id}",
+      "/staff/{id}",
+      "/staff/{id}/characters",
+      "/tags/{id}",
+      "/tags/{id}/vns",
+    ] as const;
+
+    for (const path of paths) {
+      expect(openApiDocument.paths[path].get.responses).toHaveProperty("504");
+    }
+  });
 });
