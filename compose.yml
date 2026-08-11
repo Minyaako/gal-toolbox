@@ -1,0 +1,43 @@
+services:
+  gal-toolbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gal-toolbox:local
+    container_name: gal-toolbox
+    restart: unless-stopped
+    init: true
+    read_only: true
+    environment:
+      NODE_ENV: production
+      PORT: "8787"
+      CACHE_DB_PATH: /data/cache.sqlite
+      VNDB_MIN_INTERVAL_MS: "2000"
+    volumes:
+      - gal_toolbox_data:/data
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - server_proxy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8787/api/v1/health').then((response)=>{if(!response.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  gal_toolbox_data:
+    name: gal_toolbox_data
+
+networks:
+  server_proxy:
+    external: true

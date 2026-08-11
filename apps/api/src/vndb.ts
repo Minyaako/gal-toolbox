@@ -110,7 +110,15 @@ export class VndbClient {
           if (cached && name !== "AbortError" && name !== "TimeoutError") {
             return { data: cached.value, cacheStatus: "STALE" as const };
           }
-          throw error;
+          if (
+            error instanceof VndbError
+            || name === "AbortError"
+            || name === "TimeoutError"
+          ) throw error;
+          throw new VndbError(
+            0,
+            error instanceof Error ? error.message : String(error),
+          );
         }
       },
     });
