@@ -102,7 +102,11 @@ export class VndbClient {
         if (cached) {
           return { data: cached.value, cacheStatus: "STALE" as const };
         }
-        throw error;
+        if (error instanceof VndbError) throw error;
+        throw new VndbError(
+          0,
+          error instanceof Error ? error.message : String(error),
+        );
       } finally {
         this.inFlight.delete(key);
       }

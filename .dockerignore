@@ -1,0 +1,16 @@
+.git
+.worktrees
+node_modules
+**/node_modules
+dist
+**/dist
+.vite
+coverage
+*.log
+.env
+.env.*
+data
+**/data/*.sqlite
+**/data/*.sqlite-*
+output
+.playwright-cli
