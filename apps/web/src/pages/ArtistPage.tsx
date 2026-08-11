@@ -39,7 +39,7 @@ export function ArtistPage() {
     </div></header>
     <div className="detail-relations is-single"><section className="detail-section relation-primary">
       <SectionHeading index="01" title="参与作品" />
-      {works.isPending ? <LoadingScene compact /> : works.isError ? <StatePanel title="作品关系加载失败" tone="error"><p>{works.error.message}</p></StatePanel> : buffered.items.length ? <>
+      {works.isPending ? <LoadingScene compact /> : works.isError ? <StatePanel title="作品关系加载失败" tone="error"><p>{works.error.message}</p><button type="button" onClick={() => works.refetch()}>重新加载</button></StatePanel> : buffered.items.length ? <>
         <div className="artist-work-grid">{buffered.items.map(({ vn, credits }) => <EntityCard key={vn.id} entity={vn} meta={<ArtistCredits credits={credits} />} />)}</div>
         <AutoPageLoader pageScope={`artist:${id}`} pageProgress={buffered.visiblePageCount} hasNextPage={buffered.canRevealNextPage} isFetching={buffered.isWaitingForBuffer} buffered={buffered.hasBufferedPage} onLoad={() => void buffered.revealNextPage()} label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览作品"} />
       </> : <StatePanel title="暂无画师作品记录" />}

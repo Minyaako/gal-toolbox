@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EntitySummary } from "./api";
-import { addTrailItem, normalizeTrail } from "./trail";
+import { addTrailItem, isEntitySummary, normalizeTrail } from "./trail";
 
 const staff: EntitySummary = {
   id: "s1928", type: "staff",
@@ -21,5 +21,10 @@ describe("path-aware exploration trails", () => {
 
   it("rejects malformed stored items instead of exposing dereferenceable trail entries", () => {
     expect(normalizeTrail([{ entity: {}, path: "/knowledge/artist/s1928" }, { id: "s1" }, null])).toEqual([]);
+  });
+
+  it("validates both legacy and path-aware storage entities completely", () => {
+    expect(isEntitySummary(staff)).toBe(true);
+    expect(normalizeTrail([{ entity: { ...staff, name: null }, path: "/knowledge/staff/s1928" }, { ...staff, name: null }])).toEqual([]);
   });
 });

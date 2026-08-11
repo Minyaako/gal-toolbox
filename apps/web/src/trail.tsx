@@ -11,12 +11,21 @@ import { entityPath, type EntitySummary } from "./api";
 
 export type TrailItem = { entity: EntitySummary; path: string };
 
+export function isEntitySummary(value: unknown): value is EntitySummary {
+  if (!value || typeof value !== "object") return false;
+  const entity = value as Partial<EntitySummary>;
+  return typeof entity.id === "string"
+    && (entity.type === "vn" || entity.type === "character" || entity.type === "staff" || entity.type === "tag")
+    && Boolean(entity.name)
+    && typeof entity.name?.primary === "string";
+}
+
 export function normalizeTrail(value: unknown): TrailItem[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
-    if ("entity" in item && "path" in item && typeof item.path === "string" && item.entity && typeof item.entity === "object" && "id" in item.entity && "type" in item.entity && "name" in item.entity) return [item as TrailItem];
-    if ("id" in item && "type" in item) {
+    if ("entity" in item && "path" in item && typeof item.path === "string" && isEntitySummary(item.entity)) return [item as TrailItem];
+    if (isEntitySummary(item)) {
       const entity = item as EntitySummary;
       return [{ entity, path: entityPath(entity) }];
     }
@@ -102,7 +111,7 @@ export function ExplorationTrail() {
           ))}
         </ol>
       ) : (
-        <p className="trail-empty">打开作品、角色或声优后，路径会在这里连起来。</p>
+        <p className="trail-empty">打开作品、角色、声优或画师后，路径会在这里连起来。</p>
       )}
     </aside>
   );

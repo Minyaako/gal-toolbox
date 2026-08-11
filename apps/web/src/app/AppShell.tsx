@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { notifyManager, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import { NavLink, useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { ExplorationTrail } from "../trail";
@@ -36,7 +36,7 @@ function StatusBar() {
   const navigate = useNavigate();
   const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
   const cacheSnapshot = useSyncExternalStore(
-    (notify) => queryClient.getQueryCache().subscribe(notify),
+    (notify) => queryClient.getQueryCache().subscribe(notifyManager.batchCalls(notify)),
     () => {
       const summary = queryCacheSummary(queryClient);
       return `${summary.total}:${summary.fetching}`;
