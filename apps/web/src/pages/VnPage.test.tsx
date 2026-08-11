@@ -21,7 +21,20 @@ const vn: VnDetail = {
   released: null,
   rating: null,
   voteCount: 0,
-  relations: [],
+  relations: [{
+    entity: {
+      id: "v2",
+      type: "vn",
+      name: { primary: "敏感关联作品", original: null, romanized: null, alternatives: [] },
+      image: {
+        url: "https://example.test/relation.jpg",
+        thumbnailUrl: "https://example.test/relation-thumb.jpg",
+        sexual: 1,
+        violence: 0,
+      },
+    },
+    relation: "ser",
+  }],
   tags: [],
   cast: [{
     character: {
@@ -81,6 +94,30 @@ describe("compact cast image reveal", () => {
     expect(reveal?.textContent?.trim()).toBe("显示");
     expect(reveal?.getAttribute("aria-label")).toBe("显示分级图片");
     expect(container.querySelector("a button")).toBeNull();
+  });
+
+  it("uses compact reveal copy for narrow relation-rail entity cards", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["vn", "v1"], vn);
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/knowledge/vn/v1"]}>
+          <SettingsProvider>
+            <TrailProvider>
+              <Routes><Route path="/knowledge/vn/:id" element={<VnPage />} /></Routes>
+            </TrailProvider>
+          </SettingsProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const reveal = container.querySelector<HTMLButtonElement>(
+      ".relation-rail-card .entity-card button.reveal-image",
+    );
+    expect(reveal?.textContent?.trim()).toBe("显示");
+    expect(reveal?.getAttribute("aria-label")).toBe("显示分级图片");
+    expect(container.querySelector(".relation-rail-card .entity-card a button")).toBeNull();
   });
 
   it("gives compact reveal controls room above the stretched navigation layer", () => {

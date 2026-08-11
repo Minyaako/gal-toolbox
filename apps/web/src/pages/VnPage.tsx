@@ -109,7 +109,7 @@ export function VnPage() {
         <section className="detail-section relation-rail-card">
           <SectionHeading index="03" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
           <div className="entity-grid compact-grid">
-            {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} />)}
+            {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} compactImage />)}
           </div>
         </section>
       ) : null}

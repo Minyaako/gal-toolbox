@@ -142,7 +142,9 @@ describe("sensitive image reveal controls", () => {
     });
 
     expect(container.querySelectorAll("button.reveal-image")).toHaveLength(1);
-    expect(container.querySelector('[aria-label="显示分级图片"]')).not.toBeNull();
+    const reveal = container.querySelector<HTMLButtonElement>('[aria-label="显示分级图片"]');
+    expect(reveal).not.toBeNull();
+    expect(reveal?.textContent?.trim()).toBe("显示分级图片");
     expect(container.querySelector("a button")).toBeNull();
   });
 

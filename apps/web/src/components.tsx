@@ -125,9 +125,11 @@ export function NameBlock({
 export function EntityCard({
   entity,
   meta,
+  compactImage = false,
 }: {
   entity: EntitySummary;
   meta?: ReactNode;
+  compactImage?: boolean;
 }) {
   return (
     <article className={`entity-card entity-${entity.type}`}>
@@ -135,6 +137,7 @@ export function EntityCard({
         image={entity.image}
         alt={entity.name.primary}
         fallbackText={entity.type === "tag" ? "#" : undefined}
+        compact={compactImage}
       />
       <EntityPrefetchLink
         entity={entity}
