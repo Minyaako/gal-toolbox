@@ -5,11 +5,13 @@ import {
 } from "@tanstack/react-query";
 import {
   getCharacter,
+  getSearchPage,
   getStaff,
   getStaffCharacters,
   getTag,
   getTagVns,
   getVn,
+  type EntityType,
   type CharacterDetail,
   type EntityImage,
   type EntitySummary,
@@ -17,40 +19,61 @@ import {
   type StaffCharacter,
   type TagDetail,
   type VnDetail,
+  type RequestPriority,
 } from "./api";
 
-export const vnQuery = (id: string) =>
-  queryOptions({ queryKey: ["vn", id], queryFn: () => getVn(id) });
+export const vnQuery = (id: string, priority: RequestPriority = "high") =>
+  queryOptions({ queryKey: ["vn", id], queryFn: ({ signal }) => getVn(id, { signal, priority }) });
 
-export const characterQuery = (id: string) =>
+export const characterQuery = (id: string, priority: RequestPriority = "high") =>
   queryOptions({
     queryKey: ["character", id],
-    queryFn: () => getCharacter(id),
+    queryFn: ({ signal }) => getCharacter(id, { signal, priority }),
   });
 
-export const staffQuery = (id: string) =>
-  queryOptions({ queryKey: ["staff", id], queryFn: () => getStaff(id) });
+export const staffQuery = (id: string, priority: RequestPriority = "high") =>
+  queryOptions({ queryKey: ["staff", id], queryFn: ({ signal }) => getStaff(id, { signal, priority }) });
 
-export const staffCharactersQuery = (id: string) =>
+export const staffCharactersQuery = (
+  id: string,
+  getPriority: () => RequestPriority = () => "normal",
+) =>
   infiniteQueryOptions({
     queryKey: ["staff-characters", id],
-    queryFn: ({ pageParam }) => getStaffCharacters(id, pageParam),
+    queryFn: ({ pageParam, signal }) => getStaffCharacters(id, pageParam, 12, { signal, priority: getPriority() }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.more ? lastPage.page + 1 : undefined,
   });
 
-export const tagQuery = (id: string) =>
-  queryOptions({ queryKey: ["tag", id], queryFn: () => getTag(id) });
+export const tagQuery = (id: string, priority: RequestPriority = "high") =>
+  queryOptions({ queryKey: ["tag", id], queryFn: ({ signal }) => getTag(id, { signal, priority }) });
 
-export const tagVnsQuery = (id: string) =>
+export const tagVnsQuery = (
+  id: string,
+  getPriority: () => RequestPriority = () => "normal",
+) =>
   infiniteQueryOptions({
     queryKey: ["tag-vns", id],
-    queryFn: ({ pageParam }) => getTagVns(id, pageParam),
+    queryFn: ({ pageParam, signal }) => getTagVns(id, pageParam, 12, { signal, priority: getPriority() }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.more ? lastPage.page + 1 : undefined,
   });
+
+export const searchQuery = (
+  type: EntityType,
+  query: string,
+  getPriority: () => RequestPriority = () => "high",
+) => infiniteQueryOptions({
+  queryKey: ["search", type, query],
+  queryFn: ({ pageParam, signal }) => getSearchPage(type, query, pageParam, 12, {
+    signal,
+    priority: pageParam === 1 ? "high" : getPriority(),
+  }),
+  initialPageParam: 1,
+  getNextPageParam: (lastPage) => lastPage.more ? lastPage.page + 1 : undefined,
+});
 
 export type QueryCacheSummary = {
   total: number;
@@ -94,7 +117,7 @@ export async function prefetchEntity(
 ): Promise<void> {
   try {
     if (entity.type === "vn") {
-      await queryClient.prefetchQuery(vnQuery(entity.id));
+      await queryClient.prefetchQuery(vnQuery(entity.id, "low"));
       const detail = queryClient.getQueryData<VnDetail>(["vn", entity.id]);
       if (detail) {
         preloadImages(
@@ -109,7 +132,7 @@ export async function prefetchEntity(
     }
 
     if (entity.type === "character") {
-      await queryClient.prefetchQuery(characterQuery(entity.id));
+      await queryClient.prefetchQuery(characterQuery(entity.id, "low"));
       const detail = queryClient.getQueryData<CharacterDetail>([
         "character",
         entity.id,
@@ -120,8 +143,8 @@ export async function prefetchEntity(
 
     if (entity.type === "staff") {
       await Promise.all([
-        queryClient.prefetchQuery(staffQuery(entity.id)),
-        queryClient.prefetchInfiniteQuery(staffCharactersQuery(entity.id)),
+        queryClient.prefetchQuery(staffQuery(entity.id, "low")),
+        queryClient.prefetchInfiniteQuery(staffCharactersQuery(entity.id, () => "low")),
       ]);
       const roles = queryClient.getQueryData<{
         pages: Array<Page<StaffCharacter>>;
@@ -136,8 +159,8 @@ export async function prefetchEntity(
     }
 
     await Promise.all([
-      queryClient.prefetchQuery(tagQuery(entity.id)),
-      queryClient.prefetchInfiniteQuery(tagVnsQuery(entity.id)),
+      queryClient.prefetchQuery(tagQuery(entity.id, "low")),
+      queryClient.prefetchInfiniteQuery(tagVnsQuery(entity.id, () => "low")),
     ]);
     const detail = queryClient.getQueryData<TagDetail>(["tag", entity.id]);
     const novels = queryClient.getQueryData<{ pages: Array<Page<EntitySummary>> }>(

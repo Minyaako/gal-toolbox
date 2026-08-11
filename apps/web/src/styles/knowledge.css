@@ -94,7 +94,7 @@
 .entity-card.entity-tag::before { background: var(--accent-archive); }
 .entity-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-card); }
 .card-link:focus-visible { outline-offset: -4px; }
-.entity-card .image-frame, .entity-card > .card-link > .entity-image { aspect-ratio: 3 / 4; }
+.entity-card .image-frame, .entity-card > .entity-image { aspect-ratio: 3 / 4; }
 .image-frame { background: var(--surface-muted); }
 .image-loading-skeleton {
   background:
@@ -206,8 +206,8 @@
 .relation-rail-card .section-heading > span { width: 32px; height: 32px; }
 .relation-rail-card .section-heading p { font-size: var(--text-sm); }
 .relation-rail-card .entity-grid { grid-template-columns: 1fr; }
-.relation-rail-card .entity-card .card-link { display: grid; grid-template-columns: 82px minmax(0, 1fr); }
-.relation-rail-card .entity-card .image-frame, .relation-rail-card .entity-card > .card-link > .entity-image { min-height: 108px; }
+.relation-rail-card .entity-card { display: grid; grid-template-columns: 82px minmax(0, 1fr); }
+.relation-rail-card .entity-card .image-frame, .relation-rail-card .entity-card > .entity-image { min-height: 108px; }
 
 .cast-list { gap: 12px; }
 .cast-pair { border: 1px solid var(--border-soft); border-left: 4px solid var(--accent-rose); border-radius: 2px 12px 2px 12px; background: var(--surface-card); overflow: hidden; }
@@ -239,7 +239,7 @@
 
 @media (max-width: 430px) {
   .entity-grid, .role-grid { grid-template-columns: 1fr; }
-  .entity-card .card-link { grid-template-columns: 106px minmax(0, 1fr); }
+  .entity-card { grid-template-columns: 106px minmax(0, 1fr); }
   .section-heading { grid-template-columns: 42px minmax(0, 1fr); }
   .section-heading > span { width: 34px; height: 34px; }
 }

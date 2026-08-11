@@ -1,7 +1,16 @@
 import { QueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EntitySummary, Page, TagDetail, VnDetail } from "./api";
-import { prefetchEntity } from "./queries";
+import {
+  characterQuery,
+  prefetchEntity,
+  searchQuery,
+  staffCharactersQuery,
+  staffQuery,
+  tagQuery,
+  tagVnsQuery,
+  vnQuery,
+} from "./queries";
 
 const vnEntity: EntitySummary = {
   id: "v17",
@@ -102,5 +111,104 @@ describe("intent prefetch", () => {
       pages: [page],
       pageParams: [1],
     });
+  });
+});
+
+describe("query request semantics", () => {
+  it("keeps detail and search keys stable while forwarding high priority and signals", async () => {
+    const calls: Array<{ signal?: AbortSignal; priority?: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
+      calls.push({
+        signal: init?.signal ?? undefined,
+        priority: new Headers(init?.headers).get("X-Request-Priority") ?? undefined,
+      });
+      return new Response(JSON.stringify({ results: [], items: [], more: false, page: 1, pageSize: 12 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+    const detailSignal = new AbortController().signal;
+    const searchSignal = new AbortController().signal;
+    const detailFn = vnQuery("v17").queryFn as (context: { signal: AbortSignal }) => Promise<unknown>;
+    const searchFn = searchQuery("vn", "Ever17").queryFn as (context: { signal: AbortSignal; pageParam: number }) => Promise<unknown>;
+
+    await detailFn({ signal: detailSignal });
+    await searchFn({ signal: searchSignal, pageParam: 1 });
+
+    expect(vnQuery("v17").queryKey).toEqual(["vn", "v17"]);
+    expect(calls).toEqual([
+      { signal: detailSignal, priority: "high" },
+      { signal: searchSignal, priority: "high" },
+    ]);
+  });
+
+  it("uses high for a new search page one after normal automatic buffering", async () => {
+    const priorities: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
+      priorities.push(new Headers(init?.headers).get("X-Request-Priority") ?? "");
+      return new Response(JSON.stringify({ items: [], more: true, page: 1, pageSize: 12 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+    let nextPagePriority: "high" | "normal" = "high";
+    const firstSearch = searchQuery("vn", "a", () => nextPagePriority);
+    const firstQueryFn = firstSearch.queryFn as (context: {
+      signal: AbortSignal;
+      pageParam: number;
+    }) => Promise<unknown>;
+    await firstQueryFn({ signal: new AbortController().signal, pageParam: 1 });
+    nextPagePriority = "normal";
+    await firstQueryFn({ signal: new AbortController().signal, pageParam: 2 });
+
+    const activeSearch = searchQuery("vn", "Ever17", () => nextPagePriority);
+    await (activeSearch.queryFn as (context: {
+      signal: AbortSignal;
+      pageParam: number;
+    }) => Promise<unknown>)({
+      signal: new AbortController().signal,
+      pageParam: 1,
+    });
+
+    expect(priorities).toEqual(["high", "normal", "high"]);
+  });
+
+  it("uses high for all detail queries and normal for relation pages", async () => {
+    const priorities: string[] = [];
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
+      priorities.push(new Headers(init?.headers).get("X-Request-Priority") ?? "");
+      signals.push(init?.signal as AbortSignal);
+      return new Response(JSON.stringify({ results: [], items: [], more: false, page: 1, pageSize: 12 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+    const factories = [characterQuery("c1"), staffQuery("s1"), tagQuery("g1")];
+    for (const options of factories) {
+      const signal = new AbortController().signal;
+      await (options.queryFn as (context: { signal: AbortSignal }) => Promise<unknown>)({ signal });
+      expect(signals.at(-1)).toBe(signal);
+    }
+    for (const options of [staffCharactersQuery("s1"), tagVnsQuery("g1")]) {
+      const signal = new AbortController().signal;
+      await (options.queryFn as (context: { signal: AbortSignal; pageParam: number }) => Promise<unknown>)({ signal, pageParam: 1 });
+      expect(signals.at(-1)).toBe(signal);
+    }
+    expect(priorities).toEqual(["high", "high", "high", "normal", "normal"]);
+  });
+
+  it("uses low priority for intent prefetch", async () => {
+    let priority: string | null = null;
+    vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
+      priority = new Headers(init?.headers).get("X-Request-Priority");
+      return new Response(JSON.stringify(vnDetail), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    await prefetchEntity(queryClient, vnEntity, vi.fn());
+    expect(priority).toBe("low");
   });
 });

@@ -62,10 +62,12 @@ export function VnPage() {
           <div className="cast-list">
             {vn.cast.map((pair, index) => (
               <article className="cast-pair" key={`${pair.character.id}-${pair.staff.id}-${index}`}>
-                <EntityPrefetchLink className="cast-person character" entity={pair.character} aria-label={`打开角色：${pair.character.name.primary}`}>
-                  <EntityImage image={pair.character.image} alt="" />
-                  <span><b>{pair.character.name.primary}</b><small>{pair.character.name.romanized}</small></span>
-                </EntityPrefetchLink>
+                <div className="cast-person character">
+                  <EntityImage image={pair.character.image} alt="" compact />
+                  <EntityPrefetchLink className="cast-person-link" entity={pair.character} aria-label={`打开角色：${pair.character.name.primary}`}>
+                    <span><b>{pair.character.name.primary}</b><small>{pair.character.name.romanized}</small></span>
+                  </EntityPrefetchLink>
+                </div>
                 <div className="voice-link"><span>配音</span><i aria-hidden="true">→</i></div>
                 <EntityPrefetchLink className="cast-person staff" entity={pair.staff} aria-label={`打开声优：${pair.staff.name.primary}`}>
                   <span className="staff-monogram">{pair.staff.name.primary.slice(0, 1)}</span>
@@ -107,7 +109,7 @@ export function VnPage() {
         <section className="detail-section relation-rail-card">
           <SectionHeading index="03" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
           <div className="entity-grid compact-grid">
-            {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} />)}
+            {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} compactImage />)}
           </div>
         </section>
       ) : null}

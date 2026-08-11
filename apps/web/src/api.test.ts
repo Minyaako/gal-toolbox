@@ -1,5 +1,28 @@
-import { describe, expect, it } from "vitest";
-import { entityPath } from "./api";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { entityPath, getVn } from "./api";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("API request options", () => {
+  it("forwards the exact signal and high request priority", async () => {
+    const signal = new AbortController().signal;
+    const fetcher = vi.fn(async () => new Response("{}", {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetcher);
+
+    await getVn("v17", { signal, priority: "high" });
+
+    expect(fetcher).toHaveBeenCalledWith("/api/v1/vns/v17", {
+      signal,
+      headers: {
+        Accept: "application/json",
+        "X-Request-Priority": "high",
+      },
+    });
+  });
+});
 
 describe("entityPath", () => {
   it("maps every public entity type to a stable route", () => {

@@ -47,12 +47,14 @@ export function EntityImage({
   className = "",
   fallbackText,
   eager = false,
+  compact = false,
 }: {
   image: EntityImageType;
   alt: string;
   className?: string;
   fallbackText?: string;
   eager?: boolean;
+  compact?: boolean;
 }) {
   const { settings } = useSettings();
   const [revealedSource, setRevealedSource] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export function EntityImage({
   }
 
   return (
-    <div className={`image-frame ${status === "loaded" ? "is-loaded" : "is-loading"} ${className}`} aria-busy={status === "loading"}>
+    <div className={`image-frame ${status === "loaded" ? "is-loaded" : "is-loading"} ${compact ? "is-compact" : ""} ${className}`} aria-busy={status === "loading"}>
       <span className="image-loading-skeleton" aria-hidden="true" />
       <img
         className={`entity-image ${sensitive && !revealed ? "is-sensitive" : ""}`}
@@ -91,8 +93,8 @@ export function EntityImage({
         onError={() => setLoadState({ source, status: "error" })}
       />
       {sensitive && !revealed ? (
-        <button className="reveal-image" type="button" onClick={() => setRevealedSource(source)}>
-          显示分级图片
+        <button className="reveal-image" type="button" aria-label="显示分级图片" onClick={() => setRevealedSource(source)}>
+          {compact ? "显示" : "显示分级图片"}
         </button>
       ) : null}
     </div>
@@ -123,22 +125,25 @@ export function NameBlock({
 export function EntityCard({
   entity,
   meta,
+  compactImage = false,
 }: {
   entity: EntitySummary;
   meta?: ReactNode;
+  compactImage?: boolean;
 }) {
   return (
     <article className={`entity-card entity-${entity.type}`}>
+      <EntityImage
+        image={entity.image}
+        alt={entity.name.primary}
+        fallbackText={entity.type === "tag" ? "#" : undefined}
+        compact={compactImage}
+      />
       <EntityPrefetchLink
         entity={entity}
         className="card-link"
         aria-label={`打开${labels[entity.type]}：${entity.name.primary}`}
       >
-        <EntityImage
-          image={entity.image}
-          alt={entity.name.primary}
-          fallbackText={entity.type === "tag" ? "#" : undefined}
-        />
         <div className="card-copy">
           <NameBlock entity={entity} compact />
           {meta ? <div className="card-meta">{meta}</div> : null}

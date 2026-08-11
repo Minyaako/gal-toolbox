@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Page } from "./api";
 import {
   advanceIntersectionLatch,
@@ -6,6 +6,7 @@ import {
   reduceBufferedPage,
   selectVisibleItems,
   shouldFetchBuffer,
+  createBufferedPageFetcher,
 } from "./buffered-pages";
 
 const page = (
@@ -76,5 +77,54 @@ describe("buffered pagination state", () => {
       loads.push(next.shouldLoad);
     }
     expect(loads).toEqual([true, false, false, false, true]);
+  });
+
+  it("starts automatic buffering at normal priority", async () => {
+    const fetchNextPage = vi.fn(async () => ({ data: { pages: [page(["a"], 1, true)] } }));
+    const requests = createBufferedPageFetcher(fetchNextPage, vi.fn());
+    await requests.prefetch();
+    expect(fetchNextPage).toHaveBeenCalledWith("normal");
+  });
+
+  it("promotes a pending normal request, awaits it, then reveals one page", async () => {
+    let resolve!: (value: { data: { pages: Array<Page<string>> } }) => void;
+    const pending = new Promise<{ data: { pages: Array<Page<string>> } }>((done) => { resolve = done; });
+    const fetchNextPage = vi.fn(() => pending);
+    const promoteNextPage = vi.fn(async () => undefined);
+    const requests = createBufferedPageFetcher(fetchNextPage, promoteNextPage);
+    const normal = requests.prefetch();
+    const reveal = requests.fetchForReveal();
+    await Promise.resolve();
+    expect(promoteNextPage).toHaveBeenCalledTimes(1);
+    let settled = false;
+    void reveal.then(() => { settled = true; });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    const result = { data: { pages: [page(["a"], 1, true), page(["b"], 2, false)] } };
+    resolve(result);
+    await expect(reveal).resolves.toBe(result);
+    await normal;
+    expect(fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts the high promotion consumer when its page lifecycle ends", async () => {
+    const normal = new Promise<{ data: { pages: Array<Page<string>> } }>(() => undefined);
+    const fetchNextPage = vi.fn(() => normal);
+    let promotionSignal: AbortSignal | undefined;
+    const promoteNextPage = vi.fn((signal: AbortSignal) => {
+      promotionSignal = signal;
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+    });
+    const requests = createBufferedPageFetcher(fetchNextPage, promoteNextPage);
+    void requests.prefetch();
+    void requests.fetchForReveal().catch(() => undefined);
+    await Promise.resolve();
+    expect(promotionSignal?.aborted).toBe(false);
+
+    requests.dispose();
+
+    expect(promotionSignal?.aborted).toBe(true);
   });
 });
