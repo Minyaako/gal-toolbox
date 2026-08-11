@@ -191,7 +191,7 @@ describe("sensitive image reveal controls", () => {
     await act(async () => link!.click());
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(entityPath(sensitiveEntity));
     expect(vi.mocked(fetch)).toHaveBeenCalledWith(
-      "/api/v1/vns/v17",
+      "/api/v1/vns/v17?_priorityPromotion=1",
       expect.objectContaining({
         headers: expect.objectContaining({ "X-Request-Priority": "high" }),
       }),
