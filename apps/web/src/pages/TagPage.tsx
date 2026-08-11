@@ -32,8 +32,8 @@ export function TagPage() {
     if (detail.data) visit(detail.data.entity);
   }, [detail.data, visit]);
 
-  if (detail.isPending) return <LoadingScene title="正在打开 Tag 索引" note="定义与关联作品正在整理。" />;
-  if (detail.isError) return <StatePanel title="Tag 资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
+  if (detail.isPending) return <LoadingScene headingLevel={1} title="正在打开 Tag 索引" note="定义与关联作品正在整理。" />;
+  if (detail.isError) return <StatePanel headingLevel={1} title="Tag 资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
 
   const tag = detail.data;
   const items = buffered.items;
@@ -43,7 +43,7 @@ export function TagPage() {
         <div className="staff-glyph tag-glyph" aria-hidden="true">#</div>
         <div className="detail-intro">
           <div className="record-id">VNDB / {tag.entity.id}</div>
-          <NameBlock entity={tag.entity} />
+          <NameBlock entity={tag.entity} headingLevel={1} />
           <dl className="fact-strip">
             <div><dt>类型</dt><dd>{tag.category ? categoryLabels[tag.category] : "Tag"}</dd></div>
             <div><dt>作品数</dt><dd>{tag.vnCount.toLocaleString()}</dd></div>

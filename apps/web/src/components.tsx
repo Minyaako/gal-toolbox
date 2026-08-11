@@ -99,11 +99,21 @@ export function EntityImage({
   );
 }
 
-export function NameBlock({ entity, compact = false }: { entity: EntitySummary; compact?: boolean }) {
+export function NameBlock({
+  entity,
+  compact = false,
+  headingLevel = 2,
+}: {
+  entity: EntitySummary;
+  compact?: boolean;
+  headingLevel?: 1 | 2;
+}) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+
   return (
     <div className={`name-block ${compact ? "is-compact" : ""}`}>
       <span className="entity-kind">{labels[entity.type]}</span>
-      <h2>{entity.name.primary}</h2>
+      <Heading>{entity.name.primary}</Heading>
       {entity.name.original ? <p>{entity.name.original}</p> : null}
       {entity.name.romanized ? <p lang="ja-Latn">{entity.name.romanized}</p> : null}
     </div>
@@ -157,16 +167,20 @@ export function StatePanel({
   title,
   children,
   tone = "neutral",
+  headingLevel = 2,
 }: {
   title: string;
   children?: ReactNode;
   tone?: "neutral" | "error";
+  headingLevel?: 1 | 2;
 }) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+
   return (
     <section className={`state-panel state-${tone}`} role={tone === "error" ? "alert" : "status"}>
       <span className="state-mark" aria-hidden="true">{tone === "error" ? "!" : "·"}</span>
       <div>
-        <h2>{title}</h2>
+        <Heading>{title}</Heading>
         {children}
       </div>
     </section>
@@ -203,11 +217,15 @@ export function LoadingScene({
   title = "正在调取资料",
   note = "先整理关系，再打开资料抽屉。",
   compact = false,
+  headingLevel = 2,
 }: {
   title?: string;
   note?: string;
   compact?: boolean;
+  headingLevel?: 1 | 2;
 }) {
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+
   return (
     <section className={`loading-scene ${compact ? "is-compact" : ""}`} role="status" aria-live="polite" aria-busy="true">
       <div className="loading-cabinet" aria-hidden="true">
@@ -216,7 +234,7 @@ export function LoadingScene({
       </div>
       <div className="loading-copy">
         <span>Association archive / loading</span>
-        <h2>{title}</h2>
+        <Heading>{title}</Heading>
         <p>{note}</p>
       </div>
     </section>

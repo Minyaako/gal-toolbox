@@ -26,8 +26,8 @@ export function StaffPage() {
     if (detail.data) visit(detail.data.entity);
   }, [detail.data, visit]);
 
-  if (detail.isPending) return <LoadingScene title="正在打开声优资料" note="正在整理艺名与关联角色。" />;
-  if (detail.isError) return <StatePanel title="声优资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
+  if (detail.isPending) return <LoadingScene headingLevel={1} title="正在打开声优资料" note="正在整理艺名与关联角色。" />;
+  if (detail.isError) return <StatePanel headingLevel={1} title="声优资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
 
   const staff = detail.data;
   const characters = buffered.items;
@@ -37,7 +37,7 @@ export function StaffPage() {
         <div className="staff-glyph" aria-hidden="true">{staff.entity.name.primary.slice(0, 1)}</div>
         <div className="detail-intro">
           <div className="record-id">VNDB / {staff.entity.id}</div>
-          <NameBlock entity={staff.entity} />
+          <NameBlock entity={staff.entity} headingLevel={1} />
           {staff.aliases.length ? (
             <div className="alias-cloud" aria-label="艺名与别名">
               {staff.aliases.slice(0, 16).map((alias, index) => <span key={`${alias.name}-${index}`}>{alias.name}</span>)}

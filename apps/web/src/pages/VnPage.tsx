@@ -33,8 +33,8 @@ export function VnPage() {
     if (query.data) visit(query.data.entity);
   }, [query.data, visit]);
 
-  if (query.isPending) return <LoadingScene title="正在打开作品档案" note="封面、配音关系和 Tag 正在汇合。" />;
-  if (query.isError) return <StatePanel title="作品资料加载失败" tone="error"><p>{query.error.message}</p><button type="button" onClick={() => query.refetch()}>重新加载</button></StatePanel>;
+  if (query.isPending) return <LoadingScene headingLevel={1} title="正在打开作品档案" note="封面、配音关系和 Tag 正在汇合。" />;
+  if (query.isError) return <StatePanel headingLevel={1} title="作品资料加载失败" tone="error"><p>{query.error.message}</p><button type="button" onClick={() => query.refetch()}>重新加载</button></StatePanel>;
 
   const vn = query.data;
   const visibleTags = vn.tags
@@ -46,7 +46,7 @@ export function VnPage() {
         <EntityImage image={vn.entity.image} alt={vn.entity.name.primary} className="detail-cover" eager />
         <div className="detail-intro">
           <div className="record-id">VNDB / {vn.entity.id}</div>
-          <NameBlock entity={vn.entity} />
+          <NameBlock entity={vn.entity} headingLevel={1} />
           <dl className="fact-strip">
             <div><dt>发售</dt><dd>{vn.released ?? "未知"}</dd></div>
             <div><dt>评分</dt><dd>{vn.rating ? (vn.rating / 10).toFixed(2) : "—"}</dd></div>

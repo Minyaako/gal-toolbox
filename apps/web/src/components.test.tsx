@@ -1,5 +1,24 @@
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { imageLoadStatus, imagePresentation } from "./components";
+import {
+  imageLoadStatus,
+  imagePresentation,
+  LoadingScene,
+  NameBlock,
+  StatePanel,
+} from "./components";
+
+const entity = {
+  id: "v17",
+  type: "vn" as const,
+  name: {
+    primary: "Ever17",
+    original: null,
+    romanized: null,
+    alternatives: [],
+  },
+  image: null,
+};
 
 describe("entity image presentation", () => {
   it("returns a semantic entity fallback when an image is absent or failed", () => {
@@ -24,5 +43,49 @@ describe("entity image presentation", () => {
       { source: "thumb.jpg", status: "loaded" },
       "cover.jpg",
     )).toBe("loading");
+  });
+});
+
+describe("semantic heading levels", () => {
+  it("uses h1 for NameBlock when requested", () => {
+    const markup = renderToStaticMarkup(<NameBlock entity={entity} headingLevel={1} />);
+
+    expect(markup).toContain("<h1>Ever17</h1>");
+    expect(markup).not.toContain("<h2>");
+  });
+
+  it("keeps NameBlock at h2 by default", () => {
+    const markup = renderToStaticMarkup(<NameBlock entity={entity} />);
+
+    expect(markup).toContain("<h2>Ever17</h2>");
+    expect(markup).not.toContain("<h1>");
+  });
+
+  it("uses h1 for LoadingScene when requested", () => {
+    const markup = renderToStaticMarkup(<LoadingScene title="Loading" headingLevel={1} />);
+
+    expect(markup).toContain("<h1>Loading</h1>");
+    expect(markup).not.toContain("<h2>");
+  });
+
+  it("keeps LoadingScene at h2 by default", () => {
+    const markup = renderToStaticMarkup(<LoadingScene title="Loading" />);
+
+    expect(markup).toContain("<h2>Loading</h2>");
+    expect(markup).not.toContain("<h1>");
+  });
+
+  it("uses h1 for StatePanel when requested", () => {
+    const markup = renderToStaticMarkup(<StatePanel title="Failed" headingLevel={1} />);
+
+    expect(markup).toContain("<h1>Failed</h1>");
+    expect(markup).not.toContain("<h2>");
+  });
+
+  it("keeps StatePanel at h2 by default", () => {
+    const markup = renderToStaticMarkup(<StatePanel title="Failed" />);
+
+    expect(markup).toContain("<h2>Failed</h2>");
+    expect(markup).not.toContain("<h1>");
   });
 });
