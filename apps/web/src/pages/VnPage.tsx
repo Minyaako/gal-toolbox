@@ -85,7 +85,7 @@ export function VnPage() {
         <div className="artist-relation-grid">
           {vn.artists.map(({ staff, credits }) => <article className="artist-relation-card" key={staff.id}>
             <ArtistPrefetchLink staff={staff} className="cast-person staff">
-              <span className="staff-monogram">{staff.name.primary.slice(0, 1)}</span>
+              <span className="staff-monogram" aria-hidden="true">{staff.name.primary.slice(0, 1)}</span>
               <span><b>{staff.name.primary}</b>{staff.name.original ? <small>{staff.name.original}</small> : null}<small>{staff.name.romanized}</small></span>
             </ArtistPrefetchLink>
             <ArtistCredits credits={credits} />
@@ -97,7 +97,7 @@ export function VnPage() {
       {visibleTags.length || vn.relations.length ? <RelationRail>
       {visibleTags.length ? (
         <section className="detail-section tag-section relation-rail-card">
-          <SectionHeading index="02" title="继续沿 Tag 探索" note="中文来自 VNDB Profile Search，英文保留用于定位。" />
+          <SectionHeading index="03" title="继续沿 Tag 探索" note="中文来自 VNDB Profile Search，英文保留用于定位。" />
           <div className="tag-cloud">
             {visibleTags.map((item) => {
                 const secondary = getSecondaryName(item.tag.name);
@@ -122,7 +122,7 @@ export function VnPage() {
 
       {vn.relations.length ? (
         <section className="detail-section relation-rail-card">
-          <SectionHeading index="03" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
+          <SectionHeading index="04" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
           <div className="entity-grid compact-grid">
             {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} compactImage />)}
           </div>

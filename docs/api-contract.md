@@ -78,7 +78,7 @@ type ArtistWork = {
 - `artists: ArtistRelation[]`
 - `tags: { tag: EntitySummary; rating: number; spoiler: number; category: string | null }[]`
 
-`artists` 按画师在 VNDB 返回中的首次出现顺序分组。`role: "art"` 表示原画，`"chardesign"` 表示角色设计；同一画师的 credits 按原画、角色设计排序。每个 credit 的 `note` 会清理 VNDB BBCode 和首尾空白，空白或缺失时为 `null`，同一角色与同一规范化 note 会去重。`staff.note` 是逐作品、逐角色的 credit note，不是 Staff 的全局 biography。
+`artists` 按画师在 VNDB 返回中的首次出现顺序分组。`role: "art"` 表示原画，`"chardesign"` 表示角色设计；同一画师的 credits 按原画、角色设计排序。每个 credit 的 `note` 会清理 VNDB BBCode 和首尾空白，空白或缺失时为 `null`，同一职责与同一规范化 note 会去重。`staff.note` 是逐作品、逐职责的 credit note，不是 Staff 的全局 biography。
 
 ### `GET /characters/:id`
 

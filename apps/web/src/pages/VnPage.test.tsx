@@ -83,7 +83,7 @@ describe("artist relations", () => {
   });
   it("renders each artist once with ordered role labels and notes", () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(["vn", "v1"], { ...vn, artists: [{
+    queryClient.setQueryData(["vn", "v1"], { ...vn, tags: [{ tag: { id: "g1", type: "tag", name: { primary: "Tag", original: null, romanized: null, alternatives: [] }, image: null }, rating: 1, spoiler: 0, category: "cont" }], artists: [{
       staff: { id: "s1928", type: "staff", name: { primary: "画师", original: null, romanized: "Artist", alternatives: [] }, image: null },
       credits: [{ role: "art", note: null }, { role: "chardesign", note: "Character sprites, BG" }],
     }, {
@@ -95,6 +95,10 @@ describe("artist relations", () => {
     expect(markup).toContain("原画／美术");
     expect(markup).toContain("角色设计");
     expect(markup).toContain("Character sprites, BG");
+    expect(markup).toContain('<span>02</span><div><h2>原画与角色设计</h2>');
+    expect(markup).toContain('<span>03</span><div><h2>继续沿 Tag 探索</h2>');
+    expect(markup).toContain('<span>04</span><div><h2>关联作品</h2>');
+    expect(markup).toContain('<span class="staff-monogram" aria-hidden="true">画</span>');
     expect((markup.match(/\/knowledge\/artist\/s1928/g) ?? [])).toHaveLength(1);
     expect((markup.match(/\/knowledge\/artist\/s223/g) ?? [])).toHaveLength(1);
     expect(markup).toContain("Artist"); expect(markup).toContain("Second Artist");
