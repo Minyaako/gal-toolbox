@@ -37,7 +37,8 @@ it("updates cache status after mounting an ArtistPage without render-phase warni
   const client = new QueryClient();
   client.setQueryData(["artist", "s1928"], { entity: { id: "s1928", type: "staff", name: { primary: "画师", original: null, romanized: null, alternatives: [] }, image: null }, description: null, language: null, aliases: [], externalLinks: [] });
   client.setQueryData(["artist-vns", "s1928"], { pages: [{ items: [], page: 1, pageSize: 12, more: false }], pageParams: [1] });
-  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("/vns?") ? { items: [], page: 1, pageSize: 12, more: false } : { entity: { id: "s1928", type: "staff", name: { primary: "画师", original: null, romanized: null, alternatives: [] }, image: null }, description: null, language: null, aliases: [], externalLinks: [] }), { status: 200, headers: { "Content-Type": "application/json" } })));
+  const fetcher = vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("/vns?") ? { items: [], page: 1, pageSize: 12, more: false } : { entity: { id: "s1928", type: "staff", name: { primary: "画师", original: null, romanized: null, alternatives: [] }, image: null }, description: null, language: null, aliases: [], externalLinks: [] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  vi.stubGlobal("fetch", fetcher);
   const container = document.createElement("div"); document.body.append(container);
   const root = createRoot(container); const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
   const Routes = () => useRoutes(appRoutes);
@@ -50,9 +51,11 @@ it("updates cache status after mounting an ArtistPage without render-phase warni
 it("navigates from a stable route to an uncached artist without render-phase warnings", async () => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("/vns?") ? { items: [], page: 1, pageSize: 12, more: false } : { entity: { id: "s1928", type: "staff", name: { primary: "画师", original: null, romanized: null, alternatives: [] }, image: null }, description: null, language: null, aliases: [], externalLinks: [] }), { status: 200, headers: { "Content-Type": "application/json" } })));
+  const fetcher = vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("/vns?") ? { items: [], page: 1, pageSize: 12, more: false } : { entity: { id: "s1928", type: "staff", name: { primary: "画师", original: null, romanized: null, alternatives: [] }, image: null }, description: null, language: null, aliases: [], externalLinks: [] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  vi.stubGlobal("fetch", fetcher);
   function NavigateToArtist() { const navigate = useNavigate(); useEffect(() => { navigate("/knowledge/artist/s1928"); }, [navigate]); return null; }
   const Routes = () => useRoutes(appRoutes); const container = document.createElement("div"); document.body.append(container); const root = createRoot(container); const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
   await act(async () => root.render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/ranking"]}><TrailProvider><NavigateToArtist /><Routes /></TrailProvider></MemoryRouter></QueryClientProvider>));
-  expect(error).not.toHaveBeenCalled(); await act(async () => root.unmount()); container.remove(); error.mockRestore(); vi.unstubAllGlobals();
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
+  expect(container.textContent).toContain("画师"); expect(client.getQueryCache().find({ queryKey: ["artist", "s1928"], exact: true })).toBeDefined(); expect(error).not.toHaveBeenCalled(); await act(async () => root.unmount()); container.remove(); error.mockRestore(); vi.unstubAllGlobals();
 });
