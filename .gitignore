@@ -8,3 +8,4 @@ coverage/
 data/*.sqlite
 data/*.sqlite-*
 apps/api/data/
+.worktrees/

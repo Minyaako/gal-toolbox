@@ -16,6 +16,8 @@
 - Do not publish a host port; connect the container only to `server_proxy`.
 - Keep the root filesystem read-only and run the application as a non-root user.
 - Treat `/data/cache.sqlite` as disposable cache data, not business data.
+- Do not modify the `server-infra` repository; keep route and acceptance files
+  in the independent `gal-toolbox` repository.
 
 ---
 
@@ -200,9 +202,8 @@ git commit -m "feat: add manual Docker deployment"
 ### Task 3: Shared Caddy Route and Production Acceptance
 
 **Files:**
-- Create in `server-infra`: `infra/caddy/sites-available/gtool.caddy`
-- Modify in `server-infra`: `docs/remote-sync-table.md`
-- Create in `server-infra`: `docs/verification/gtool-production-acceptance.md`
+- Create: `deploy/gtool.caddy`
+- Create: `docs/verification/gtool-production-acceptance.md`
 
 **Interfaces:**
 - Consumes: DNS `gtool.minyako.top -> 124.223.13.233`, the healthy `gal-toolbox:8787` service, and shared Caddy imports.
@@ -210,7 +211,7 @@ git commit -m "feat: add manual Docker deployment"
 
 - [ ] **Step 1: Add and validate the Caddy route**
 
-Create `infra/caddy/sites-available/gtool.caddy`:
+Create `deploy/gtool.caddy`:
 
 ```caddy
 gtool.minyako.top {
@@ -237,14 +238,14 @@ https://gtool.minyako.top/api/v1/search?type=vn&q=v17&page=1&pageSize=1
 
 Expected: HTTP 200, health reports SQLite/API version 1, and search returns VNDB entry `v17`. Repeat the search and confirm `X-Cache: HIT`.
 
-- [ ] **Step 3: Record inventory and acceptance evidence**
+- [ ] **Step 3: Record acceptance evidence**
 
-Add a `Gal Toolbox` row to `docs/remote-sync-table.md` with repository, local path, remote release path, `prod-ready` state, public endpoint, Compose/Caddy notes, disposable-cache backup policy, and rollback location. Record exact deployed commit, container health, HTTPS response, VNDB request, cache-hit evidence, logging command, and rollback command in `docs/verification/gtool-production-acceptance.md`.
+Record the repository, local path, remote release path, public endpoint, Compose/Caddy notes, disposable-cache backup policy, rollback location, exact deployed commit, container health, HTTPS response, VNDB request, cache-hit evidence, logging command, and rollback command in `docs/verification/gtool-production-acceptance.md`.
 
 - [ ] **Step 4: Commit infrastructure records**
 
 ```powershell
-git add -- infra/caddy/sites-available/gtool.caddy docs/remote-sync-table.md docs/verification/gtool-production-acceptance.md
+git add -- deploy/gtool.caddy docs/verification/gtool-production-acceptance.md
 git commit -m "feat: route gtool production service"
 ```
 
@@ -256,7 +257,7 @@ git commit -m "feat: route gtool production service"
 - Modify only if verification finds a defect in files owned by Tasks 1-3.
 
 **Interfaces:**
-- Consumes: the application branch, server-infra branch, running container, Caddy route, and public DNS.
+- Consumes: the application branch, running container, Caddy route, and public DNS.
 - Produces: final evidence that source, runtime, and public behavior agree.
 
 - [ ] **Step 1: Re-run local application verification**
@@ -269,4 +270,4 @@ Check `docker compose ps`, recent application logs, Caddy validation, the intern
 
 - [ ] **Step 3: Compare source and deployed revision**
 
-Confirm the application acceptance record contains the same full commit SHA as `git rev-parse HEAD` and that both repositories have no uncommitted task-owned changes.
+Confirm the application acceptance record contains the same full commit SHA as `git rev-parse HEAD` and that the application repository has no uncommitted task-owned changes.

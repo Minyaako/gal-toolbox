@@ -52,9 +52,10 @@ is uploaded from the trusted local checkout to `/srv/apps/gal-toolbox`, then
 built and started on the server with Docker Compose. This avoids storing a
 GitHub token or private deploy key on the server.
 
-The application repository owns its Dockerfile, Compose file, ignore rules, and
-deployment runbook. The `server-infra` repository owns the shared Caddy route
-and the high-level remote synchronization record.
+The application repository owns its Dockerfile, Compose file, ignore rules,
+Caddy route snippet, deployment runbook, and production acceptance record. The
+existing `server-infra` working copy is not modified; the reviewed route snippet
+is installed directly into the shared Caddy runtime directory on the server.
 
 ## Error Handling and Operations
 
