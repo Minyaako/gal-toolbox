@@ -26,6 +26,7 @@
 - 同 key 请求共享上游任务；消费者可分别取消，只有最后消费者离开才中止底层请求。已处理 abort 后新消费者、settle 回调同 key 重入与旧 finally 清理竞态。
 - React Query 的 AbortSignal 贯通到 BFF 和 VNDB fetch；AbortError 不重试。显式 high 分页提升也归页面生命周期信号管理。
 - 自动缓冲后的新主动搜索会重新恢复 high，已由页面集成测试覆盖 `high -> normal -> high`。
+- 自动翻页按 `pageScope + visiblePageCount` 去重：同一页进度只触发一次，进度推进或切换搜索/Staff/Tag scope 后可重新触发；已失效 IntersectionObserver 的迟到回调会被忽略。
 - hover 预取延迟 150ms，离开卡片或卸载时取消；每个 QueryClient 最多同时保留 3 个不同实体的 low 意图预取，超额直接放弃。
 - pointerdown/click 会额外发送一次 high 提升请求，不改变 React Query 的稳定 key。high 请求使用 `?_priorityPromotion=1` 区分 HTTP URL，避免浏览器或中间缓存把 low/high GET 合并；BFF 仍按同一 VNDB endpoint/body 键共享上游任务。
 - VNDB 12 秒超时映射为 HTTP 504 `UPSTREAM_TIMEOUT`；前端对取消、429 和 504 不重试，其他错误最多重试一次。
@@ -45,6 +46,7 @@
 - `apps/web/src/api.ts`、`queries.ts`、`query-client.ts`、`buffered-pages.ts` 与测试：端到端 signal、retry、预取与分页提升。
 - `apps/web/src/components.tsx` 与测试：150ms 意图预取、三槽预算以及 pointerdown/click high 提升。
 - `apps/web/src/pages/SearchPage.tsx`、`StaffPage.tsx`、`TagPage.tsx`：主动请求与自动缓冲优先级。
+- `apps/web/src/components.tsx` 与上述三个分页页：自动加载按 scope/进度重新武装，并防止旧 observer 回调污染新页状态。
 - `apps/web/src/components.tsx`、`pages/VnPage.tsx`、相关样式与 happy-dom 测试：分级图片控件结构、层级与 compact 模式。
 - `Dockerfile`、`compose.yml`、`deploy/gtool.caddy`：生产容器与 HTTPS 路由。
 - `docs/deployment.md` 与 `docs/verification/gtool-production-acceptance.md`：手动发布、回滚和生产验收。
@@ -80,10 +82,12 @@
 2. 用 Server-Timing 采集冷启动 queue/upstream 数据，比较角色详情、主动搜索、Staff 分页与预取的 P50/P95。
 3. 根据 hover-to-click 命中率评估 150ms 延迟和 3 槽 low 预算是否需要调整，并根据图片下载耗时决定是否引入图片代理。
 4. 明确 Gal 排行规则后先写 API 契约与验收用例，再替换占位页。
+5. 设计并实现 `VN → 画师 → VN` 链路；首版不细分具体角色，并在作品关系中保留 `staff.note` 备注。
 
 ## Validation evidence
 
 - PR #3 合并前开发分支基线：Tag 2/2、API 29/29、Web 60/60 通过。
 - 本轮延迟修复合并远端部署分支前：Tag 2/2、API 31/31、Web 63/63，根 typecheck、production build、`git diff --check` 均通过；独立代码复审 PASS。
+- 自动翻页修复：聚焦 23/23、Web 65/65，typecheck、production build 与两阶段代码复审通过。
 - 上一生产版本：容器健康、HTTPS 首页与健康接口返回 200，真实 `v17` 查询成功且重复请求为 `X-Cache: HIT`。
 - 生产浏览器烟测：大厅与知识图鉴加载正常，`v17` 显示“时空轮回”，控制台 0 error/0 warning。
