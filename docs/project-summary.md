@@ -16,6 +16,9 @@
 - VN 标题可优先选择 `zh-Hans/zh-Hant`；角色与 staff 只能可靠展示原文与罗马字。
 - OpenAPI 3.1 文档位于 `/api/v1/openapi.json`，轻量文档页位于 `/api/docs`。
 - 搜索、staff 角色和 Tag 作品列表默认每页 12 条，并在距页尾 600px 时自动预取。
+- 生产实例位于 `https://gtool.minyako.top`，由共享 Caddy 提供 HTTPS。
+- 生产容器以非 root、只读根文件系统运行，只连接 `server_proxy`，不发布宿主机端口。
+- SQLite 缓存每小时执行一次 `prune()`；过期 7 天以内的数据继续用于 `STALE` 回退。
 
 ## Decisions
 
@@ -28,6 +31,8 @@
 - 图片用固定比例骨架、淡入、失败占位和详情图高优先级改善加载观感；路由级请求使用完整资料加载场景。
 - 中文 Tag 翻译本轮不接入，先保留 VNDB 英文原名，并为后续本地化层保留稳定 DTO。
 - VN 详情仅展示 `spoiler === 0` 且非 `ero` 的 Tag。
+- 生产使用单实例 Node 容器、Docker Compose 和 SQLite 命名卷；发布暂时保持手动，不添加 GitHub Actions。
+- VNDB 网络错误统一映射为 502 `UPSTREAM_UNAVAILABLE`，不暴露为应用内部 500。
 
 ## Files/repos touched
 
@@ -37,6 +42,9 @@
 - `docs/api-contract.md`：可供未来前端重写使用的 DTO/接口契约。
 - `docs/performance-tags-openapi-spec.md`：本轮性能观感、Tag 与 OpenAPI 的范围和验收标准。
 - `output/playwright/`：桌面与移动端真实页面截图。
+- `Dockerfile`、`compose.yml`、`deploy/gtool.caddy`：生产容器与 HTTPS 路由。
+- `docs/deployment.md`：手动发布、验证和回滚步骤。
+- `docs/verification/gtool-production-acceptance.md`：生产验收证据。
 - GitHub：`Minyaako/gal-toolbox`。
 
 ## Open questions
@@ -44,7 +52,7 @@
 - 最终作为大项目的独立服务、子路径模块还是 monorepo package 集成。
 - 仓库何时公开，以及项目代码最终采用 MIT、Apache-2.0 或其他许可证。
 - 中文 Tag/Trait 使用 VNDB Profile Search 翻译、自己维护，还是仅显示英文原始值。
-- 生产部署使用单实例 SQLite，还是 Redis/PostgreSQL 共享缓存。
+- 如果未来需要多副本，何时迁移到共享缓存与共享限流。
 
 ## Risks
 
@@ -53,10 +61,10 @@
 - `character.seiyuu + vns` 表示声优配过角色以及角色登场作品，不能证明每个发行版本都由该声优配音。
 - VNDB 描述文本多为英文，中文内容不完整。
 - 单实例节流器不适用于未来多副本部署，需要共享限流。
+- 腾讯云到 VNDB/CDN 的连接可能瞬时超时或较慢；API 会返回 502 或使用可用的 `STALE` 缓存。
 
 ## Not done
 
-- 未部署线上实例。
 - 未实现 VNDB 登录、收藏、评分或用户列表。
 - 未实现中文 Tag/Trait 翻译、Trait 探索、相似推荐和全局关系图布局。
 - 未增加 Service Worker、图片代理/CDN 或持久化图片缓存。
@@ -77,3 +85,4 @@
 - `npm.cmd audit --audit-level=high`：0 vulnerabilities。
 - 真实 API：Tag 搜索、`g2380` 详情、Tag→VN 分页和 OpenAPI 3.1 均返回 200。
 - Playwright：Tag→VN→Tag、自动追加分页、桌面加载场景和 390×844 移动布局通过，最终控制台 0 errors。
+- 生产：容器健康、HTTPS 首页与健康接口返回 200，真实 `v17` 查询成功且重复请求为 `X-Cache: HIT`。

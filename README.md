@@ -2,6 +2,8 @@
 
 面向中文 Galgame 用户的图像化、联想化知识探索工具。数据来自 VNDB Kana API。
 
+生产实例：<https://gtool.minyako.top>
+
 当前仓库已实现两个可互通的最小闭环：
 
 `搜索 VN → 查看封面和配音关系 → 打开角色/声优 → 查看声优配过的角色 → 从角色回到其他 VN`
@@ -53,7 +55,8 @@ npm.cmd run build
 
 生产环境使用单个 Docker Compose 服务并由 Caddy 提供 HTTPS。参见
 [`docs/deployment.md`](docs/deployment.md)。当前部署流程为手动发布，不包含
-GitHub Actions。
+GitHub Actions。SQLite 仅保存可重建的 VNDB 响应缓存；进程每小时清理一次
+过期超过 7 天的记录，并保留近期过期数据用于上游故障时的 `STALE` 回退。
 
 ## 数据与许可
 
