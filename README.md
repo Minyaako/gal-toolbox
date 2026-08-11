@@ -49,6 +49,12 @@ npm.cmd test
 npm.cmd run build
 ```
 
+## 生产部署
+
+生产环境使用单个 Docker Compose 服务并由 Caddy 提供 HTTPS。参见
+[`docs/deployment.md`](docs/deployment.md)。当前部署流程为手动发布，不包含
+GitHub Actions。
+
 ## 数据与许可
 
 - VNDB API 免费使用条款以非商业用途为前提；商业化前需与 VNDB 确认。
