@@ -1,9 +1,10 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getTag, getTagVns } from "../api";
+import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
+import { tagQuery, tagVnsQuery } from "../queries";
 
 const categoryLabels = {
   cont: "内容 Tag",
@@ -13,13 +14,17 @@ const categoryLabels = {
 
 export function TagPage() {
   const { id = "" } = useParams();
-  const detail = useQuery({ queryKey: ["tag", id], queryFn: () => getTag(id), enabled: Boolean(id) });
+  const detail = useQuery({ ...tagQuery(id), enabled: Boolean(id) });
   const novels = useInfiniteQuery({
-    queryKey: ["tag-vns", id],
-    queryFn: ({ pageParam }) => getTagVns(id, pageParam),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => (lastPage.more ? lastPage.page + 1 : undefined),
+    ...tagVnsQuery(id),
     enabled: Boolean(id),
+  });
+  const buffered = useBufferedPages({
+    scope: `tag:${id}`,
+    pages: novels.data?.pages ?? [],
+    hasNextPage: novels.hasNextPage,
+    isFetchingNextPage: novels.isFetchingNextPage,
+    fetchNextPage: novels.fetchNextPage,
   });
   const { visit } = useTrail();
 
@@ -27,18 +32,18 @@ export function TagPage() {
     if (detail.data) visit(detail.data.entity);
   }, [detail.data, visit]);
 
-  if (detail.isPending) return <LoadingScene title="正在打开 Tag 索引" note="定义与关联作品正在整理。" />;
-  if (detail.isError) return <StatePanel title="Tag 资料加载失败" tone="error"><p>{detail.error.message}</p></StatePanel>;
+  if (detail.isPending) return <LoadingScene headingLevel={1} title="正在打开 Tag 索引" note="定义与关联作品正在整理。" />;
+  if (detail.isError) return <StatePanel headingLevel={1} title="Tag 资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
 
   const tag = detail.data;
-  const items = novels.data?.pages.flatMap((page) => page.items) ?? [];
+  const items = buffered.items;
   return (
-    <article className="detail-page tag-page">
+    <article className="detail-page tag-page entity-detail detail-tag">
       <header className="staff-hero tag-hero">
         <div className="staff-glyph tag-glyph" aria-hidden="true">#</div>
         <div className="detail-intro">
           <div className="record-id">VNDB / {tag.entity.id}</div>
-          <NameBlock entity={tag.entity} />
+          <NameBlock entity={tag.entity} headingLevel={1} />
           <dl className="fact-strip">
             <div><dt>类型</dt><dd>{tag.category ? categoryLabels[tag.category] : "Tag"}</dd></div>
             <div><dt>作品数</dt><dd>{tag.vnCount.toLocaleString()}</dd></div>
@@ -47,22 +52,25 @@ export function TagPage() {
         </div>
       </header>
 
-      <section className="detail-section">
-        <SectionHeading index="01" title="带有此 Tag 的作品" note="按 VNDB 评分优先，接近页尾时自动准备下一批。" />
+      <div className="detail-relations is-single">
+      <section className="detail-section relation-primary">
+        <SectionHeading index="01" title="带有此 Tag 的作品" note="中文来自 VNDB Profile Search；按 VNDB 评分优先，后台始终多准备一页。" />
         {novels.isPending ? <LoadingScene compact title="正在整理作品卡" /> : novels.isError ? (
-          <StatePanel title="关联作品加载失败" tone="error"><p>{novels.error.message}</p></StatePanel>
+          <StatePanel title="关联作品加载失败" tone="error"><p>{novels.error.message}</p><button type="button" onClick={() => novels.refetch()}>重新加载</button></StatePanel>
         ) : items.length ? (
           <>
             <div className="entity-grid">{items.map((vn) => <EntityCard key={vn.id} entity={vn} />)}</div>
             <AutoPageLoader
-              hasNextPage={novels.hasNextPage}
-              isFetching={novels.isFetchingNextPage}
-              onLoad={() => void novels.fetchNextPage()}
-              label="继续浏览相关作品"
+              hasNextPage={buffered.canRevealNextPage}
+              isFetching={buffered.isWaitingForBuffer}
+              buffered={buffered.hasBufferedPage}
+              onLoad={() => void buffered.revealNextPage()}
+              label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览相关作品"}
             />
           </>
         ) : <StatePanel title="暂无相关作品" />}
       </section>
+      </div>
     </article>
   );
 }

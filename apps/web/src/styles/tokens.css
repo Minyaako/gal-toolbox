@@ -1,0 +1,60 @@
+:root {
+  color-scheme: light;
+  --surface-canvas: #f3f5f1;
+  --surface-canvas-cool: #e8eef1;
+  --surface-card: #fcfcf8;
+  --surface-muted: #dbe4e7;
+  --surface-navy: #12345b;
+  --ink-strong: #102b4c;
+  --ink-body: #28445d;
+  --ink-muted: #627584;
+  --ink-inverse: #fffdf5;
+  --brand-navy: #12345b;
+  --brand-navy-deep: #0a2442;
+  --accent-rose: #b9405d;
+  --accent-rose-deep: #8e2945;
+  --accent-cyan: #197b91;
+  --accent-cyan-bright: #38aabc;
+  --accent-archive: #2f6559;
+  --accent-gold: #8a631f;
+  --accent-gold-bright: #d6b36c;
+  --focus-ring: #075d80;
+  --border-strong: #12345b;
+  --border-soft: #b9c8cd;
+  --danger: #a52d45;
+  --warning: #8b631b;
+  --success: #2f6559;
+  --info: #197b91;
+  --bg: var(--surface-canvas);
+  --surface: var(--surface-card);
+  --surface-2: var(--surface-muted);
+  --ink: var(--ink-strong);
+  --muted: var(--ink-muted);
+  --accent: var(--accent-rose);
+  --accent-dark: var(--accent-rose-deep);
+  --line: var(--border-soft);
+  --font-sans: "Segoe UI", "Noto Sans CJK SC", "Microsoft YaHei UI", sans-serif;
+  --font-display: "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
+  --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  --text-xs: .72rem;
+  --text-sm: .88rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: clamp(1.7rem, 3vw, 2.65rem);
+  --text-2xl: clamp(2.8rem, 7vw, 6.4rem);
+  --lh-tight: 1.08;
+  --lh-body: 1.72;
+  --space-page: clamp(18px, 4vw, 64px);
+  --space-section: clamp(48px, 7vw, 92px);
+  --radius-cut: 2px 18px 2px 18px;
+  --radius-soft: 14px;
+  --shadow-card: 0 20px 48px rgb(16 43 76 / 12%);
+  --shadow-line: 7px 7px 0 rgb(18 52 91 / 10%);
+  --dur-1: 140ms;
+  --dur-2: 260ms;
+  --dur-3: 440ms;
+  --ease-out: cubic-bezier(.2, .85, .2, 1);
+}
+
+:root[data-density="comfortable"] { --space-section: clamp(64px, 9vw, 116px); }
+:root[data-density="compact"] { --space-section: clamp(36px, 5vw, 64px); --lh-body: 1.55; }

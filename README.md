@@ -8,7 +8,9 @@
 
 `搜索 Tag → 查看高评分关联作品 → 打开 VN → 沿 VN Tag 继续探索`
 
-首屏分页为 12 条，接近页尾时自动预取下一页；图片使用固定尺寸骨架、淡入和失败占位，详情请求期间显示完整资料加载场景。
+首屏分页为 12 条，后台始终多准备一页但一次只展示一页；卡片在鼠标悬停、键盘聚焦或触屏按下时预取详情。图片使用固定尺寸骨架、淡入和失败占位，详情请求期间显示完整资料加载场景。
+
+Tag 支持简体中文优先显示与中文搜索，英文原名保留为辅助定位。
 
 ## 项目结构
 
@@ -55,3 +57,4 @@ npm.cmd run build
 - VNDB 数据受其 Data License 约束。
 - 图片 URL 指向 VNDB/CDN；本项目不永久镜像图片。
 - 声优实体在 VNDB API 中没有头像，界面使用其关联角色图像作为视觉线索。
+- Tag 简体中文翻译来自 [VNDB Profile Search](https://github.com/JodieRuth/VNDB-Profile-Search) contributors，单独按 CC BY 4.0 使用；完整声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

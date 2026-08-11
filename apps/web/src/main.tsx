@@ -1,21 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
+import { queryClient } from "./query-client";
 import { TrailProvider } from "./trail";
 import "./styles.css";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 30 * 60 * 1000,
-      retry: (count, error) => count < 2 && !("status" in error && error.status === 429),
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+import "./styles/tokens.css";
+import "./styles/base.css";
+import "./styles/shell.css";
+import "./styles/knowledge.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

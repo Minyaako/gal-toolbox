@@ -1,19 +1,24 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getStaff, getStaffCharacters } from "../api";
+import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
+import { staffCharactersQuery, staffQuery } from "../queries";
 
 export function StaffPage() {
   const { id = "" } = useParams();
-  const detail = useQuery({ queryKey: ["staff", id], queryFn: () => getStaff(id), enabled: Boolean(id) });
+  const detail = useQuery({ ...staffQuery(id), enabled: Boolean(id) });
   const roles = useInfiniteQuery({
-    queryKey: ["staff-characters", id],
-    queryFn: ({ pageParam }) => getStaffCharacters(id, pageParam),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => (lastPage.more ? lastPage.page + 1 : undefined),
+    ...staffCharactersQuery(id),
     enabled: Boolean(id),
+  });
+  const buffered = useBufferedPages({
+    scope: `staff:${id}`,
+    pages: roles.data?.pages ?? [],
+    hasNextPage: roles.hasNextPage,
+    isFetchingNextPage: roles.isFetchingNextPage,
+    fetchNextPage: roles.fetchNextPage,
   });
   const { visit } = useTrail();
 
@@ -21,18 +26,18 @@ export function StaffPage() {
     if (detail.data) visit(detail.data.entity);
   }, [detail.data, visit]);
 
-  if (detail.isPending) return <LoadingScene title="正在打开声优资料" note="正在整理艺名与关联角色。" />;
-  if (detail.isError) return <StatePanel title="声优资料加载失败" tone="error"><p>{detail.error.message}</p></StatePanel>;
+  if (detail.isPending) return <LoadingScene headingLevel={1} title="正在打开声优资料" note="正在整理艺名与关联角色。" />;
+  if (detail.isError) return <StatePanel headingLevel={1} title="声优资料加载失败" tone="error"><p>{detail.error.message}</p><button type="button" onClick={() => detail.refetch()}>重新加载</button></StatePanel>;
 
   const staff = detail.data;
-  const characters = roles.data?.pages.flatMap((page) => page.items) ?? [];
+  const characters = buffered.items;
   return (
-    <article className="detail-page">
+    <article className="detail-page entity-detail detail-staff">
       <header className="staff-hero">
         <div className="staff-glyph" aria-hidden="true">{staff.entity.name.primary.slice(0, 1)}</div>
         <div className="detail-intro">
           <div className="record-id">VNDB / {staff.entity.id}</div>
-          <NameBlock entity={staff.entity} />
+          <NameBlock entity={staff.entity} headingLevel={1} />
           {staff.aliases.length ? (
             <div className="alias-cloud" aria-label="艺名与别名">
               {staff.aliases.slice(0, 16).map((alias, index) => <span key={`${alias.name}-${index}`}>{alias.name}</span>)}
@@ -42,10 +47,11 @@ export function StaffPage() {
         </div>
       </header>
 
-      <section className="detail-section">
+      <div className="detail-relations is-single">
+      <section className="detail-section relation-primary">
         <SectionHeading index="01" title="配过的角色" note="图片来自角色立绘；VNDB 不提供声优本人照片。作品列表表示角色登场作品。" />
         {roles.isPending ? <LoadingScene compact title="正在整理角色卡" note="首批 12 个角色即将出现。" /> : roles.isError ? (
-          <StatePanel title="角色关系加载失败" tone="error"><p>{roles.error.message}</p></StatePanel>
+          <StatePanel title="角色关系加载失败" tone="error"><p>{roles.error.message}</p><button type="button" onClick={() => roles.refetch()}>重新加载</button></StatePanel>
         ) : characters.length ? (
           <>
             <div className="role-grid">
@@ -58,14 +64,16 @@ export function StaffPage() {
               ))}
             </div>
             <AutoPageLoader
-              hasNextPage={roles.hasNextPage}
-              isFetching={roles.isFetchingNextPage}
-              onLoad={() => void roles.fetchNextPage()}
-              label="继续浏览角色"
+              hasNextPage={buffered.canRevealNextPage}
+              isFetching={buffered.isWaitingForBuffer}
+              buffered={buffered.hasBufferedPage}
+              onLoad={() => void buffered.revealNextPage()}
+              label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览角色"}
             />
           </>
         ) : <StatePanel title="暂无配音角色记录" />}
       </section>
+      </div>
     </article>
   );
 }

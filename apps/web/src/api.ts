@@ -131,8 +131,6 @@ export const getTagVns = (id: string, page: number, pageSize = 12) =>
   api<Page<EntitySummary>>(`/tags/${id}/vns?page=${page}&pageSize=${pageSize}`);
 
 export function entityPath(entity: Pick<EntitySummary, "id" | "type">): string {
-  if (entity.type === "vn") return `/vn/${entity.id}`;
-  if (entity.type === "character") return `/character/${entity.id}`;
-  if (entity.type === "staff") return `/staff/${entity.id}`;
-  return `/tag/${entity.id}`;
+  return knowledgeEntityPath(entity);
 }
+import { knowledgeEntityPath } from "./app/navigation";
