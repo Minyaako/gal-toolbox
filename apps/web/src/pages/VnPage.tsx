@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
-import { entityPath } from "../api";
-import { EntityCard, EntityImage, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
+import { useParams } from "react-router-dom";
+import { EntityCard, EntityImage, EntityPrefetchLink, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
 import { vnQuery } from "../queries";
 import { getSecondaryName } from "../tag-label";
@@ -63,15 +62,15 @@ export function VnPage() {
           <div className="cast-list">
             {vn.cast.map((pair, index) => (
               <article className="cast-pair" key={`${pair.character.id}-${pair.staff.id}-${index}`}>
-                <Link className="cast-person character" to={entityPath(pair.character)} aria-label={`打开角色：${pair.character.name.primary}`}>
+                <EntityPrefetchLink className="cast-person character" entity={pair.character} aria-label={`打开角色：${pair.character.name.primary}`}>
                   <EntityImage image={pair.character.image} alt="" />
                   <span><b>{pair.character.name.primary}</b><small>{pair.character.name.romanized}</small></span>
-                </Link>
+                </EntityPrefetchLink>
                 <div className="voice-link"><span>配音</span><i aria-hidden="true">→</i></div>
-                <Link className="cast-person staff" to={entityPath(pair.staff)} aria-label={`打开声优：${pair.staff.name.primary}`}>
+                <EntityPrefetchLink className="cast-person staff" entity={pair.staff} aria-label={`打开声优：${pair.staff.name.primary}`}>
                   <span className="staff-monogram">{pair.staff.name.primary.slice(0, 1)}</span>
                   <span><b>{pair.staff.name.primary}</b><small>{pair.staff.name.romanized}</small></span>
-                </Link>
+                </EntityPrefetchLink>
               </article>
             ))}
           </div>
@@ -86,9 +85,9 @@ export function VnPage() {
             {visibleTags.map((item) => {
                 const secondary = getSecondaryName(item.tag.name);
                 return (
-                  <Link
+                  <EntityPrefetchLink
                     key={item.tag.id}
-                    to={entityPath(item.tag)}
+                    entity={item.tag}
                     aria-label={secondary ? `${item.tag.name.primary}，${secondary}` : item.tag.name.primary}
                   >
                     <span className="tag-mark">#</span>
@@ -97,7 +96,7 @@ export function VnPage() {
                       {secondary ? <em lang="en">{secondary}</em> : null}
                     </span>
                     <small>{item.rating.toFixed(1)}</small>
-                  </Link>
+                  </EntityPrefetchLink>
                 );
               })}
           </div>

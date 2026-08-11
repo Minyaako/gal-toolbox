@@ -1,12 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
+  entityPrefetchHandlers,
   imageLoadStatus,
   imagePresentation,
   LoadingScene,
   NameBlock,
   StatePanel,
 } from "./components";
+import type { PrefetchPreference } from "./app/settings";
 
 const entity = {
   id: "v17",
@@ -88,4 +90,24 @@ describe("semantic heading levels", () => {
     expect(markup).toContain("<h2>Failed</h2>");
     expect(markup).not.toContain("<h1>");
   });
+});
+
+describe("entity intent prefetch policy", () => {
+  it.each([
+    ["data-saver", 1],
+    ["balanced", 3],
+    ["aggressive", 3],
+  ] satisfies Array<[PrefetchPreference, number]>) (
+    "%s binds only the allowed pointer and keyboard intent triggers",
+    (preference, expectedCalls) => {
+      let calls = 0;
+      const handlers = entityPrefetchHandlers(preference, () => { calls += 1; });
+
+      handlers.onPointerEnter?.({} as never);
+      handlers.onFocus?.({} as never);
+      handlers.onPointerDown?.({} as never);
+
+      expect(calls).toBe(expectedCalls);
+    },
+  );
 });

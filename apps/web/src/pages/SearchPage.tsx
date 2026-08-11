@@ -53,19 +53,21 @@ export function SearchPage() {
         <p>搜索作品、角色或声优。每一次点击都会保留为可返回的探索路径。</p>
 
         <form className="search-console" onSubmit={submit}>
-          <div className="search-tabs" role="tablist" aria-label="搜索类型">
-            {tabs.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                role="tab"
-                aria-selected={type === tab.value}
-                onClick={() => changeType(tab.value)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <fieldset className="search-type-group">
+            <legend>搜索类型</legend>
+            <div className="search-tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  aria-pressed={type === tab.value}
+                  onClick={() => changeType(tab.value)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
           <label htmlFor="knowledge-search">{tabs.find((tab) => tab.value === type)?.hint}</label>
           <div className="search-row">
             <input

@@ -1,6 +1,10 @@
-import { NavLink, useOutlet } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type FormEvent } from "react";
+import { NavLink, useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { ExplorationTrail } from "../trail";
+import { queryCacheSummary } from "../queries";
 import { mainNavigation, type NavigationItem } from "./navigation";
+import { pageTitle } from "./routes";
 import { RouteTransition } from "./RouteTransition";
 import { SettingsProvider } from "./settings";
 
@@ -26,6 +30,50 @@ function NavigationLinks({ placement }: { placement: "rail" | "bottom" }) {
   </nav>;
 }
 
+function StatusBar() {
+  const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
+  const [, refreshCache] = useState(0);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine !== false);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
+  useEffect(() => queryClient.getQueryCache().subscribe(() => {
+    refreshCache((revision) => revision + 1);
+  }), [queryClient]);
+
+  const cache = queryCacheSummary(queryClient);
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const query = String(data.get("q") ?? "").trim();
+    if (query) navigate(`/knowledge?type=vn&q=${encodeURIComponent(query)}`);
+  };
+
+  return <header className="app-status-bar">
+    <strong className="app-status-module" aria-label="当前模块">{pageTitle(location.pathname)}</strong>
+    <form className="app-global-search" role="search" action="/knowledge" method="get" onSubmit={submit}>
+      <input type="hidden" name="type" value="vn" />
+      <label className="visually-hidden" htmlFor="global-search">全局搜索作品</label>
+      <input id="global-search" name="q" type="search" placeholder="全局搜索 Gal…" autoComplete="off" />
+      <button type="submit" aria-label="搜索">⌕</button>
+    </form>
+    <span className={`app-status-health ${online ? "is-online" : "is-offline"}`} aria-label="网络与缓存状态" role="status">
+      {online ? "在线" : "离线"} · 缓存 {cache.total}{cache.fetching ? ` · ${cache.fetching} 加载中` : ""}
+    </span>
+    <NavLink className="app-status-settings" to="/settings" aria-label="快速设置">⚙<span>设置</span></NavLink>
+  </header>;
+}
+
 function ShellLayout() {
   const outlet = useOutlet();
   return <div className="app-shell">
@@ -42,6 +90,7 @@ function ShellLayout() {
       </div>
     </aside>
     <div className="app-stage">
+      <StatusBar />
       <main id="main-content"><RouteTransition>{outlet}</RouteTransition></main>
       <ExplorationTrail />
       <footer className="site-footer">

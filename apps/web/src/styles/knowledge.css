@@ -48,10 +48,13 @@
   box-shadow: var(--shadow-line);
 }
 .search-console::after { content: ""; position: absolute; inset: 5px; border: 1px solid var(--border-soft); pointer-events: none; }
-.search-tabs { position: relative; z-index: 1; border-color: var(--border-soft); }
+.search-type-group { position: relative; z-index: 1; min-width: 0; margin: 0; padding: 0; border: 0; }
+.search-type-group legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.search-tabs { border-color: var(--border-soft); }
 .search-tabs button { border-color: var(--border-soft); color: var(--ink-muted); }
-.search-tabs button[aria-selected="true"] { background: var(--surface-navy); color: var(--ink-inverse); box-shadow: inset 0 -4px var(--accent-rose); }
+.search-tabs button[aria-pressed="true"] { background: var(--surface-navy); color: var(--ink-inverse); box-shadow: inset 0 -4px var(--accent-rose); }
 .search-console label, .search-row { position: relative; z-index: 1; }
+.search-row input:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -4px; box-shadow: inset 0 0 0 2px var(--surface-card); }
 .search-row button, .state-panel button {
   border-color: var(--accent-rose-deep);
   background: var(--accent-rose);
@@ -173,7 +176,7 @@
 .character-hero .detail-cover { background: linear-gradient(135deg, var(--surface-card), var(--surface-muted)); }
 .detail-intro { position: relative; z-index: 3; padding-top: 20px; }
 .record-id { display: inline-block; padding: 4px 9px; border-left: 3px solid var(--entity-accent); background: var(--surface-canvas-cool); }
-.detail-intro .name-block h2 { color: var(--ink-strong); font-size: clamp(2.5rem, 5.5vw, 5.4rem); }
+.detail-intro .name-block :is(h1, h2) { color: var(--ink-strong); font-size: clamp(2.5rem, 5.5vw, 5.4rem); }
 .fact-strip { border-color: var(--border-soft); background: var(--border-soft); }
 .fact-strip div { background: var(--surface-card); }
 .fact-strip dt, .description.is-muted { color: var(--ink-muted); }
@@ -229,6 +232,7 @@
   .entity-grid, .role-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .detail-hero, .staff-hero { grid-template-columns: 1fr; padding: 22px; }
   .detail-cover { width: min(82vw, 350px); justify-self: center; }
+  .detail-intro .name-block :is(h1, h2) { font-size: clamp(2.3rem, 13vw, 4.5rem); }
   .entity-detail::before { right: 2px; top: 12px; width: 82px; height: 82px; }
   .cast-pair { grid-template-columns: 1fr; }
 }

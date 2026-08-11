@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import type { FocusEventHandler, PointerEventHandler, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -9,7 +9,7 @@ import {
   type EntityType,
 } from "./api";
 import { advanceIntersectionLatch } from "./buffered-pages";
-import { useSettings } from "./app/settings";
+import { useSettings, type PrefetchPreference } from "./app/settings";
 import { prefetchEntity } from "./queries";
 
 const labels: Record<EntityType, string> = {
@@ -127,27 +127,12 @@ export function EntityCard({
   entity: EntitySummary;
   meta?: ReactNode;
 }) {
-  const queryClient = useQueryClient();
-  const { settings } = useSettings();
-  const prefetch = useCallback(() => {
-    void prefetchEntity(queryClient, entity);
-  }, [entity, queryClient]);
-
-  useEffect(() => {
-    if (settings.prefetch === "aggressive") prefetch();
-  }, [prefetch, settings.prefetch]);
-
-  const prefetchOnIntent = settings.prefetch !== "data-saver" ? prefetch : undefined;
-
   return (
     <article className={`entity-card entity-${entity.type}`}>
-      <Link
-        to={entityPath(entity)}
+      <EntityPrefetchLink
+        entity={entity}
         className="card-link"
         aria-label={`打开${labels[entity.type]}：${entity.name.primary}`}
-        onPointerEnter={prefetchOnIntent}
-        onFocus={prefetchOnIntent}
-        onPointerDown={prefetch}
       >
         <EntityImage
           image={entity.image}
@@ -158,9 +143,56 @@ export function EntityCard({
           <NameBlock entity={entity} compact />
           {meta ? <div className="card-meta">{meta}</div> : null}
         </div>
-      </Link>
+      </EntityPrefetchLink>
     </article>
   );
+}
+
+type EntityPrefetchHandlers = {
+  onPointerEnter?: PointerEventHandler<HTMLAnchorElement>;
+  onFocus?: FocusEventHandler<HTMLAnchorElement>;
+  onPointerDown: PointerEventHandler<HTMLAnchorElement>;
+};
+
+export function entityPrefetchHandlers(
+  preference: PrefetchPreference,
+  prefetch: () => void,
+): EntityPrefetchHandlers {
+  const prefetchOnIntent = preference === "data-saver" ? undefined : prefetch;
+  return {
+    onPointerEnter: prefetchOnIntent,
+    onFocus: prefetchOnIntent,
+    onPointerDown: prefetch,
+  };
+}
+
+export function EntityPrefetchLink({
+  entity,
+  className,
+  children,
+  "aria-label": ariaLabel,
+}: {
+  entity: EntitySummary;
+  className?: string;
+  children: ReactNode;
+  "aria-label"?: string;
+}) {
+  const queryClient = useQueryClient();
+  const { settings } = useSettings();
+  const prefetch = useCallback(() => {
+    void prefetchEntity(queryClient, entity);
+  }, [entity, queryClient]);
+
+  useEffect(() => {
+    if (settings.prefetch === "aggressive") prefetch();
+  }, [prefetch, settings.prefetch]);
+
+  return <Link
+    to={entityPath(entity)}
+    className={className}
+    aria-label={ariaLabel}
+    {...entityPrefetchHandlers(settings.prefetch, prefetch)}
+  >{children}</Link>;
 }
 
 export function StatePanel({
