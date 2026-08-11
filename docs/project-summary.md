@@ -6,6 +6,10 @@
 
 ## Confirmed facts
 
+- 已新增独立的 `VN → 画师 → VN` 探索链：VN 详情展示 `art` 与 `chardesign` 人员，画师详情使用 `/knowledge/artist/:id`，旧入口 `/artist/:id` 重定向到新路由。
+- 同一画师在同一作品中的原画／美术、角色设计 credit 会合并为一张作品卡，但每条角色标签与 `staff.note` 都会保留；首版不映射到具体角色。
+- BFF 已提供 `GET /api/v1/artists/:id` 与 `GET /api/v1/artists/:id/vns?page=...`，并在 VN 详情 DTO 中加入合并后的 `artists` 关系。
+
 - 仓库：`https://github.com/Minyaako/gal-toolbox.git`，默认分支为 `main`，开发分支为 `dev`。
 - 前端为 React + TypeScript SPA，后端为 Fastify BFF；API 使用 `/api/v1` DTO 隔离 VNDB 原始结构。
 - 正式路由包括 `/`、`/knowledge`、四类 `/knowledge/*/:id` 详情、`/ranking`、`/settings` 与显式 404；旧详情链接保留重定向。
@@ -20,6 +24,10 @@
 - 旧实现中 hover 的 low 详情预取与路由 high 查询共享同一个 React Query pending promise，因此点击后不会向 BFF 发出 high 请求；12 秒上游超时再叠加两次前端重试时，最坏可接近 39 秒。
 
 ## Decisions
+
+- 画师链与声优链保持平行路由和独立查询缓存，避免把“配音角色关系”与“作品画师关系”混入同一 staff 页面语义。
+- 画师意图预取沿用全局 low-priority 三槽预算，点击时提升为 high；画师作品列表继续使用“一页展示、一页缓冲”和按 `artist:<id>` 分页 scope。
+- QueryCache 状态栏订阅使用 React Query `notifyManager.batchCalls` 包装，防止冷画师路由注册查询时触发 React render-phase 更新警告。
 
 - VNDB 调度维持最小启动间隔 1500ms、最大并发 2；优先级为 high/normal/low，同级 FIFO，并用约 8 秒 aging 防止饥饿。
 - high 用于主动搜索、详情导航和显式下一页；normal 用于首屏关系和自动缓冲；low 用于 hover/focus/aggressive 预取。
@@ -39,6 +47,10 @@
 - 图片按 VNDB 分级字段默认模糊，不建立永久图片镜像。
 
 ## Files/repos touched
+
+- `apps/api/src/app.ts`、`vndb.ts`、`openapi.ts` 与合同测试：画师详情/作品 API、VN 画师 credits 聚合、错误响应及 OpenAPI 1.3.0。
+- `apps/web/src/pages/ArtistPage.tsx`、`VnPage.tsx`、`queries.ts`、`components.tsx`、路由与测试：画师链、预取/提升、轨迹和分页。
+- `apps/web/src/app/AppShell.tsx`、`trail.tsx`、`styles/knowledge.css`：批处理缓存状态通知、严格轨迹缓存校验、画师卡片及长备注响应式布局。
 
 - `apps/api/src/request-scheduler.ts` 与测试：优先级、并发、节流、aging、同 key 共享和取消。
 - `apps/api/src/vndb.ts`、`app.ts`、`openapi.ts` 与测试：信号、优先级、错误映射、Server-Timing 和响应契约。
@@ -71,6 +83,8 @@
 
 ## Not done
 
+- 画师链首版没有精确到“某画师负责某个角色”，也没有加入独立画师搜索入口；当前从 VN 作品关系进入画师页。
+
 - 未实现登录、收藏、评分、用户列表、Trait 中文化、相似推荐或完整关系图布局。
 - `/ranking` 仍为空白占位页，不展示虚构名次。
 - 未实现图片代理/CDN、Service Worker 或持久化图片缓存。
@@ -78,13 +92,15 @@
 
 ## Next actions
 
-1. 部署合并后的版本并复验 `VN → 角色 → 声优 → 角色/作品` 与 `Tag → VN` 关系链。
-2. 用 Server-Timing 采集冷启动 queue/upstream 数据，比较角色详情、主动搜索、Staff 分页与预取的 P50/P95。
-3. 根据 hover-to-click 命中率评估 150ms 延迟和 3 槽 low 预算是否需要调整，并根据图片下载耗时决定是否引入图片代理。
-4. 明确 Gal 排行规则后先写 API 契约与验收用例，再替换占位页。
-5. 设计并实现 `VN → 画师 → VN` 链路；首版不细分具体角色，并在作品关系中保留 `staff.note` 备注。
+1. 合并本轮画师链 PR 后在生产环境复验 `v17 → s1928 → v247`，确认真实 VNDB 数据、预取优先级、移动端换行和控制台均正常。
+2. 部署合并后的版本并复验 `VN → 角色 → 声优 → 角色/作品` 与 `Tag → VN` 关系链。
+3. 用 Server-Timing 采集冷启动 queue/upstream 数据，比较角色详情、主动搜索、Staff 分页与预取的 P50/P95。
+4. 根据 hover-to-click 命中率评估 150ms 延迟和 3 槽 low 预算是否需要调整，并根据图片下载耗时决定是否引入图片代理。
+5. 明确 Gal 排行规则后先写 API 契约与验收用例，再替换占位页。
 
 ## Validation evidence
+
+- 画师链 API 与 Web 独立复审均通过；全仓测试 Tag 2/2、API 39/39、Web 89/89，根 typecheck、production build 与 `git diff --check` 通过。真实 `v17/s1928/v247` 数据完成桌面与 390px 验收：主内容/关系栏布局正确，`staff.note` 正常换行、无横向溢出，路由来回跳转正常，控制台 0 error/0 warning。
 
 - PR #3 合并前开发分支基线：Tag 2/2、API 29/29、Web 60/60 通过。
 - 本轮延迟修复合并远端部署分支前：Tag 2/2、API 31/31、Web 63/63，根 typecheck、production build、`git diff --check` 均通过；独立代码复审 PASS。
