@@ -127,6 +127,7 @@ export function SearchPage() {
               hasNextPage={buffered.canRevealNextPage}
               isFetching={buffered.isWaitingForBuffer}
               buffered={buffered.hasBufferedPage}
+              pageProgress={buffered.visiblePageCount}
               onLoad={() => void buffered.revealNextPage()}
               label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览搜索结果"}
             />

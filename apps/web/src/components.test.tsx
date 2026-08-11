@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  AutoPageLoader,
   EntityCard,
   createEntityPrefetchIntent,
   imageLoadStatus,
@@ -17,6 +18,27 @@ import {
 } from "./components";
 import { SettingsProvider } from "./app/settings";
 import { entityPath, type EntitySummary } from "./api";
+
+class ControllableIntersectionObserver {
+  static instances: ControllableIntersectionObserver[] = [];
+  private readonly callback: IntersectionObserverCallback;
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    ControllableIntersectionObserver.instances.push(this);
+  }
+
+  observe() {}
+
+  disconnect() {}
+
+  emit(isIntersecting: boolean) {
+    this.callback(
+      [{ isIntersecting } as IntersectionObserverEntry],
+      this as unknown as IntersectionObserver,
+    );
+  }
+}
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -237,5 +259,51 @@ describe("entity intent prefetch policy", () => {
     expect(keyboardPromote).toHaveBeenCalledTimes(1);
     promotedIntent.dispose();
     keyboardIntent.dispose();
+  });
+});
+
+describe("automatic pagination", () => {
+  it("rearms after page progress while suppressing duplicate intersections", async () => {
+    vi.stubGlobal("IntersectionObserver", ControllableIntersectionObserver);
+    ControllableIntersectionObserver.instances = [];
+    const onLoad = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <AutoPageLoader
+          hasNextPage
+          isFetching={false}
+          pageProgress={1}
+          onLoad={onLoad}
+        />,
+      );
+    });
+
+    const observer = ControllableIntersectionObserver.instances[0];
+    if (!observer) throw new Error("IntersectionObserver was not created");
+    await act(async () => {
+      observer.emit(true);
+      observer.emit(true);
+    });
+    expect(onLoad).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      root.render(
+        <AutoPageLoader
+          hasNextPage
+          isFetching={false}
+          pageProgress={2}
+          onLoad={onLoad}
+        />,
+      );
+    });
+    await act(async () => observer.emit(true));
+    expect(onLoad).toHaveBeenCalledTimes(2);
+
+    await act(async () => root.unmount());
+    container.remove();
   });
 });

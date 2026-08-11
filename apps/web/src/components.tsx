@@ -314,17 +314,23 @@ export function AutoPageLoader({
   hasNextPage,
   isFetching,
   buffered = false,
+  pageProgress,
   onLoad,
   label = "继续加载",
 }: {
   hasNextPage: boolean;
   isFetching: boolean;
   buffered?: boolean;
+  pageProgress: number;
   onLoad: () => void;
   label?: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const autoLoadArmedRef = useRef(true);
+
+  useEffect(() => {
+    autoLoadArmedRef.current = true;
+  }, [pageProgress]);
 
   useEffect(() => {
     const target = sentinelRef.current;
