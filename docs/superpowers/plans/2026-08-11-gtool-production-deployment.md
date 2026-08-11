@@ -270,4 +270,4 @@ Check `docker compose ps`, recent application logs, Caddy validation, the intern
 
 - [ ] **Step 3: Compare source and deployed revision**
 
-Confirm the application acceptance record contains the same full commit SHA as `git rev-parse HEAD` and that the application repository has no uncommitted task-owned changes.
+Confirm the application acceptance record contains the exact deployed full commit SHA, that this SHA is an ancestor of `git rev-parse HEAD`, and that the application repository has no uncommitted task-owned changes.
