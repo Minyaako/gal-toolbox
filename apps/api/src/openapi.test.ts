@@ -2,12 +2,33 @@ import { describe, expect, it } from "vitest";
 import { openApiDocsHtml, openApiDocument } from "./openapi.js";
 
 describe("OpenAPI document", () => {
-  it("publishes the current version and tag exploration paths", () => {
+  it("publishes the current version and exploration paths", () => {
     expect(openApiDocument.openapi).toBe("3.1.0");
-    expect(openApiDocument.info.version).toBe("1.2.0");
+    expect(openApiDocument.info.version).toBe("1.3.0");
+    expect(openApiDocument.tags).toContainEqual({ name: "Artists" });
     expect(openApiDocument.paths).toHaveProperty("/tags/{id}");
     expect(openApiDocument.paths).toHaveProperty("/tags/{id}/vns");
+    expect(openApiDocument.paths).toHaveProperty("/artists/{id}");
+    expect(openApiDocument.paths).toHaveProperty("/artists/{id}/vns");
     expect(openApiDocument.paths["/search"].get.description).toContain("Chinese");
+  });
+
+  it("publishes artist DTO schemas and cache semantics", () => {
+    expect(openApiDocument.components.schemas.VnDetail.required).toContain("artists");
+    expect(openApiDocument.components.schemas.ArtistCredit.required).toEqual(["role", "note"]);
+    expect(openApiDocument.components.schemas.ArtistRelation.required).toEqual(["staff", "credits"]);
+    expect(openApiDocument.components.schemas.ArtistWork.required).toEqual(["vn", "credits"]);
+    expect(openApiDocument.components.schemas.ArtistWorkPage.required)
+      .toEqual(["items", "page", "pageSize", "more"]);
+
+    const detail = openApiDocument.paths["/artists/{id}"].get;
+    const works = openApiDocument.paths["/artists/{id}/vns"].get;
+    expect(detail.responses["200"].description).toContain("300 seconds");
+    expect(works.responses["200"].description).toContain("60 seconds");
+    expect(works.parameters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "page", in: "query" }),
+      expect.objectContaining({ name: "pageSize", in: "query" }),
+    ]));
   });
 
   it("keeps the standalone docs page free of favicon requests", () => {
@@ -32,6 +53,8 @@ describe("OpenAPI document", () => {
       "/characters/{id}",
       "/staff/{id}",
       "/staff/{id}/characters",
+      "/artists/{id}",
+      "/artists/{id}/vns",
       "/tags/{id}",
       "/tags/{id}/vns",
     ] as const;
