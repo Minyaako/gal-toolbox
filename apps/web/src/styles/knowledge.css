@@ -116,6 +116,7 @@
 .card-copy::before { content: ""; position: absolute; top: 0; left: 18px; width: 34px; height: 1px; background: var(--accent-gold); }
 .name-block h2 { color: var(--ink-strong); }
 .name-block p, .card-meta { color: var(--ink-muted); }
+.card-meta .artist-credits, .card-meta .artist-credits * { white-space: normal; text-overflow: clip; overflow: visible; }
 .entity-kind { color: var(--accent-rose-deep); }
 .entity-character .entity-kind { color: var(--accent-rose); }
 .entity-staff .entity-kind { color: var(--accent-cyan); }
@@ -193,6 +194,7 @@
   padding: var(--space-section) 0 0;
 }
 .detail-relations .detail-section { padding: 0; }
+.detail-relations.is-single { grid-template-columns: minmax(0, 1fr); }
 .relation-rail { position: sticky; top: 18px; display: grid; gap: 16px; }
 .relation-rail-card {
   padding: 22px !important;

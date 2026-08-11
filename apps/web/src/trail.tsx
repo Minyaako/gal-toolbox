@@ -15,7 +15,7 @@ export function normalizeTrail(value: unknown): TrailItem[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
-    if ("entity" in item && "path" in item && typeof item.path === "string") return [item as TrailItem];
+    if ("entity" in item && "path" in item && typeof item.path === "string" && item.entity && typeof item.entity === "object" && "id" in item.entity && "type" in item.entity && "name" in item.entity) return [item as TrailItem];
     if ("id" in item && "type" in item) {
       const entity = item as EntitySummary;
       return [{ entity, path: entityPath(entity) }];
