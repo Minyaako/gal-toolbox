@@ -13,6 +13,7 @@
 - VNDB 冷请求现由优先级调度器管理，而非等待上一请求完整结束的全局串行 Promise 链。
 - 2026-08-11 实测慢角色详情的主要时间花在 BFF 调度队列：`queueWait` 约 8.0–8.7 秒，而 VNDB 上游约 0.38–1.05 秒；图片数量不是详情首屏的阻塞门槛。
 - 旧实现中 hover 的 low 详情预取与路由 high 查询共享同一个 React Query pending promise，因此点击后不会向 BFF 发出 high 请求；12 秒上游超时再叠加两次前端重试时，最坏可接近 39 秒。
+- 最终验证：Tag 翻译 2/2、API 31/31、Web 63/63，根 typecheck、production build、`git diff --check` 均通过；独立代码复审 PASS。
 
 ## Decisions
 
