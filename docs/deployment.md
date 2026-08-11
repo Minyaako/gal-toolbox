@@ -43,11 +43,12 @@ The service joins `server_proxy` and does not publish a host port.
 ## Install or update the Caddy route
 
 Upload the repository-owned route, validate the full shared configuration, and
-reload only after validation succeeds:
+restart only the Caddy container after validation succeeds. The shared gateway
+sets `admin off`, so the `caddy reload` command is intentionally unavailable.
 
 ```powershell
 scp deploy/gtool.caddy tencent-server:/tmp/gtool.caddy
-ssh tencent-server "sudo install -o root -g root -m 0644 /tmp/gtool.caddy /srv/server-stack-prod/caddy/sites-enabled/gtool.caddy && sudo docker exec server-caddy caddy validate --config /etc/caddy/Caddyfile && sudo docker exec server-caddy caddy reload --config /etc/caddy/Caddyfile && rm /tmp/gtool.caddy"
+ssh tencent-server "sudo install -o root -g root -m 0644 /tmp/gtool.caddy /srv/server-stack-prod/caddy/sites-enabled/gtool.caddy && sudo docker exec server-caddy caddy validate --config /etc/caddy/Caddyfile && sudo docker restart server-caddy && rm /tmp/gtool.caddy"
 ```
 
 ## Verify

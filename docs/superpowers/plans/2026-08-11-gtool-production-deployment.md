@@ -224,7 +224,7 @@ gtool.minyako.top {
 }
 ```
 
-Copy it to `/srv/server-stack-prod/caddy/sites-enabled/gtool.caddy`, then run `caddy validate` inside `server-caddy` before reloading Caddy.
+Copy it to `/srv/server-stack-prod/caddy/sites-enabled/gtool.caddy`, then run `caddy validate` inside `server-caddy` before restarting only that container. The shared gateway sets `admin off`, so `caddy reload` is unavailable.
 
 - [ ] **Step 2: Verify the public service**
 
