@@ -5,21 +5,33 @@ import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   EntityCard,
-  entityPrefetchHandlers,
+  createEntityPrefetchIntent,
   imageLoadStatus,
   imagePresentation,
   LoadingScene,
   NameBlock,
   StatePanel,
 } from "./components";
-import type { PrefetchPreference } from "./app/settings";
 import { SettingsProvider } from "./app/settings";
 import { entityPath, type EntitySummary } from "./api";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  })));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 const entity = {
   id: "v17",
@@ -178,6 +190,12 @@ describe("sensitive image reveal controls", () => {
     expect(link).not.toBeNull();
     await act(async () => link!.click());
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(entityPath(sensitiveEntity));
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      "/api/v1/vns/v17?_priorityPromotion=1",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Request-Priority": "high" }),
+      }),
+    );
 
     await act(async () => root.unmount());
     container.remove();
@@ -185,21 +203,39 @@ describe("sensitive image reveal controls", () => {
 });
 
 describe("entity intent prefetch policy", () => {
-  it.each([
-    ["data-saver", 1],
-    ["balanced", 3],
-    ["aggressive", 3],
-  ] satisfies Array<[PrefetchPreference, number]>) (
-    "%s binds only the allowed pointer and keyboard intent triggers",
-    (preference, expectedCalls) => {
-      let calls = 0;
-      const handlers = entityPrefetchHandlers(preference, () => { calls += 1; });
+  it("debounces hover for 150ms and cancels a pending hover on leave", async () => {
+    vi.useFakeTimers();
+    const prefetch = vi.fn();
+    const promote = vi.fn();
+    const intent = createEntityPrefetchIntent("balanced", prefetch, promote);
 
-      handlers.onPointerEnter?.({} as never);
-      handlers.onFocus?.({} as never);
-      handlers.onPointerDown?.({} as never);
+    intent.handlers.onPointerEnter?.({} as never);
+    await vi.advanceTimersByTimeAsync(149);
+    expect(prefetch).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(prefetch).toHaveBeenCalledTimes(1);
 
-      expect(calls).toBe(expectedCalls);
-    },
-  );
+    intent.handlers.onPointerEnter?.({} as never);
+    intent.handlers.onPointerLeave?.({} as never);
+    await vi.advanceTimersByTimeAsync(150);
+    expect(prefetch).toHaveBeenCalledTimes(1);
+    intent.dispose();
+    vi.useRealTimers();
+  });
+
+  it("promotes pointer and keyboard activation only once per mounted link", () => {
+    const promote = vi.fn();
+    const promotedIntent = createEntityPrefetchIntent("balanced", vi.fn(), promote);
+
+    promotedIntent.handlers.onPointerDown?.({} as never);
+    promotedIntent.handlers.onClick?.({} as never);
+    expect(promote).toHaveBeenCalledTimes(1);
+
+    const keyboardPromote = vi.fn();
+    const keyboardIntent = createEntityPrefetchIntent("balanced", vi.fn(), keyboardPromote);
+    keyboardIntent.handlers.onClick?.({} as never);
+    expect(keyboardPromote).toHaveBeenCalledTimes(1);
+    promotedIntent.dispose();
+    keyboardIntent.dispose();
+  });
 });

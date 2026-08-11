@@ -4,6 +4,7 @@ import type { EntitySummary, Page, TagDetail, VnDetail } from "./api";
 import {
   characterQuery,
   prefetchEntity,
+  promoteEntity,
   searchQuery,
   staffCharactersQuery,
   staffQuery,
@@ -46,6 +47,63 @@ afterEach(() => {
 });
 
 describe("intent prefetch", () => {
+  it("sends a separate high promotion while the low detail prefetch is pending", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const priorities: string[] = [];
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      urls.push(String(input));
+      priorities.push(new Headers(init?.headers).get("X-Request-Priority") ?? "");
+      await gate;
+      return new Response(JSON.stringify(vnDetail), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const low = prefetchEntity(queryClient, vnEntity, vi.fn());
+    await vi.waitFor(() => expect(priorities).toEqual(["low"]));
+    const high = promoteEntity(vnEntity);
+    await vi.waitFor(() => expect(priorities).toEqual(["low", "high"]));
+    expect(urls).toEqual([
+      "/api/v1/vns/v17",
+      "/api/v1/vns/v17?_priorityPromotion=1",
+    ]);
+
+    release();
+    await Promise.all([low, high]);
+  });
+
+  it("admits only three distinct low intent prefetches until a slot settles", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const startedIds: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const id = String(input).match(/\/vns\/(v\d+)/)?.[1] ?? "missing";
+      startedIds.push(id);
+      await gate;
+      return new Response(JSON.stringify({
+        ...vnDetail,
+        entity: { ...vnDetail.entity, id },
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+    const entities = ["v1", "v2", "v3", "v4"].map((id) => ({ ...vnEntity, id }));
+
+    const firstWave = entities.map((item) => prefetchEntity(queryClient, item, vi.fn()));
+    await vi.waitFor(() => expect(startedIds).toEqual(["v1", "v2", "v3"]));
+    release();
+    await Promise.all(firstWave);
+
+    await prefetchEntity(queryClient, entities[3]!, vi.fn());
+    expect(startedIds).toEqual(["v1", "v2", "v3", "v4"]);
+  });
+
   it("deduplicates concurrent VN requests and preloads the returned cover", async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },

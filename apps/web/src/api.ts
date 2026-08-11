@@ -4,6 +4,7 @@ export type RequestPriority = "high" | "normal" | "low";
 export type ApiRequestOptions = {
   signal?: AbortSignal;
   priority?: RequestPriority;
+  promotion?: boolean;
 };
 
 export type EntityName = {
@@ -99,7 +100,10 @@ export class ApiError extends Error {
 }
 
 async function api<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const response = await fetch(`/api/v1${path}`, {
+  const promotionSuffix = options.promotion
+    ? `${path.includes("?") ? "&" : "?"}_priorityPromotion=1`
+    : "";
+  const response = await fetch(`/api/v1${path}${promotionSuffix}`, {
     signal: options.signal,
     headers: {
       Accept: "application/json",

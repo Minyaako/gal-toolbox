@@ -110,11 +110,36 @@ const preloadImages = (
   }
 };
 
+const activeIntentPrefetches = new WeakMap<QueryClient, Set<string>>();
+const MAX_ACTIVE_INTENT_PREFETCHES = 3;
+
+export async function promoteEntity(entity: EntitySummary): Promise<void> {
+  try {
+    const options = { priority: "high" as const, promotion: true };
+    if (entity.type === "vn") await getVn(entity.id, options);
+    else if (entity.type === "character") await getCharacter(entity.id, options);
+    else if (entity.type === "staff") await getStaff(entity.id, options);
+    else await getTag(entity.id, options);
+  } catch {
+    // The route query remains the owner of visible success and error state.
+  }
+}
+
 export async function prefetchEntity(
   queryClient: QueryClient,
   entity: EntitySummary,
   preload: (url: string) => void = preloadBrowserImage,
 ): Promise<void> {
+  let active = activeIntentPrefetches.get(queryClient);
+  if (!active) {
+    active = new Set();
+    activeIntentPrefetches.set(queryClient, active);
+  }
+  const intentKey = `${entity.type}:${entity.id}`;
+  const ownsSlot = !active.has(intentKey);
+  if (ownsSlot && active.size >= MAX_ACTIVE_INTENT_PREFETCHES) return;
+  if (ownsSlot) active.add(intentKey);
+
   try {
     if (entity.type === "vn") {
       await queryClient.prefetchQuery(vnQuery(entity.id, "low"));
@@ -177,5 +202,7 @@ export async function prefetchEntity(
     );
   } catch {
     // Intent prefetch is opportunistic; route-level queries own visible errors.
+  } finally {
+    if (ownsSlot) active.delete(intentKey);
   }
 }

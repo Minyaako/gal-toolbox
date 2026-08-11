@@ -25,6 +25,26 @@ async function createTestApp(fetcher: typeof fetch) {
 }
 
 describe("public API", () => {
+  it("returns an explicit 504 when VNDB exceeds its request deadline", async () => {
+    const app = await createTestApp((async () => {
+      throw new DOMException("VNDB timed out", "TimeoutError");
+    }) as typeof fetch);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/characters/c17",
+      headers: { "X-Request-Priority": "high" },
+    });
+
+    expect(response.statusCode).toBe(504);
+    expect(response.json()).toMatchObject({
+      error: {
+        code: "UPSTREAM_TIMEOUT",
+        requestId: expect.any(String),
+      },
+    });
+  });
+
   it("forwards high priority and exposes queue and upstream timing", async () => {
     const app = await createTestApp((async () => new Response(JSON.stringify({
       results: [{ id: "v17", title: "Ever17", titles: [], aliases: [], image: null }],

@@ -16,14 +16,23 @@
 - 生产容器以非 root、只读根文件系统运行，只连接 `server_proxy`，不发布宿主机端口。
 - SQLite 缓存每小时执行一次 `prune()`；过期 7 天以内的数据可用于 `STALE` 回退。
 - VN DTO 已有 `rating` 与 `voteCount` 字段；`/ranking` 当前仍是核心占位路由。
+- 2026-08-11 实测慢角色详情的主要时间花在 BFF 调度队列：`queueWait` 约 8.0–8.7 秒，而 VNDB 上游约 0.38–1.05 秒；图片数量不是详情首屏的阻塞门槛。
+- 旧实现中 hover 的 low 详情预取与路由 high 查询共享同一个 React Query pending promise，因此点击后不会向 BFF 发出 high 请求；12 秒上游超时再叠加两次前端重试时，最坏可接近 39 秒。
 
 ## Decisions
 
 - VNDB 调度维持最小启动间隔 1500ms、最大并发 2；优先级为 high/normal/low，同级 FIFO，并用约 8 秒 aging 防止饥饿。
-- high 用于主动搜索、详情导航和显式下一页；normal 用于首屏关系和自动缓冲；low 用于 hover、focus 与 aggressive 预取。
-- 同 key 请求共享上游任务；消费者可分别取消，只有最后消费者离开才中止底层请求。
+- high 用于主动搜索、详情导航和显式下一页；normal 用于首屏关系和自动缓冲；low 用于 hover/focus/aggressive 预取。
+- 同 key 请求共享上游任务；消费者可分别取消，只有最后消费者离开才中止底层请求。已处理 abort 后新消费者、settle 回调同 key 重入与旧 finally 清理竞态。
+- React Query 的 AbortSignal 贯通到 BFF 和 VNDB fetch；AbortError 不重试。显式 high 分页提升也归页面生命周期信号管理。
+- 自动缓冲后的新主动搜索会重新恢复 high，已由页面集成测试覆盖 `high -> normal -> high`。
+- hover 预取延迟 150ms，离开卡片或卸载时取消；每个 QueryClient 最多同时保留 3 个不同实体的 low 意图预取，超额直接放弃。
+- pointerdown/click 会额外发送一次 high 提升请求，不改变 React Query 的稳定 key。high 请求使用 `?_priorityPromotion=1` 区分 HTTP URL，避免浏览器或中间缓存把 low/high GET 合并；BFF 仍按同一 VNDB endpoint/body 键共享上游任务。
+- VNDB 12 秒超时映射为 HTTP 504 `UPSTREAM_TIMEOUT`；前端对取消、429 和 504 不重试，其他错误最多重试一次。
+- 分级图片按钮与导航链接为兄弟节点，不允许交互元素嵌套；层级为图片 z1、拉伸链接 z2、按钮 z3。
+- 72–82px 的 cast/relation 小图显示短标签“显示”，保留完整 aria-label；普通网格继续显示“显示分级图片”。
+- 不为满足“每任务一个提交”的形式要求改写已公开的审阅修复历史，保留独立修复提交便于追踪。
 - 普通 VNDB 网络错误映射为 502 `UPSTREAM_UNAVAILABLE`；客户端取消与超时保持可辨别，非取消错误存在近期过期缓存时返回 `STALE` 数据。
-- 分级图片按钮与导航链接为兄弟节点，不嵌套交互元素；窄关系图显示短标签“显示”，普通网格显示“显示分级图片”。
 - `/` 为“Gal 百宝箱”功能大厅，VNDB 联想搜索位于 `/knowledge`；排行与设置是同级模块。
 - 生产使用单实例 Node 容器、Docker Compose 和 SQLite 命名卷；发布保持手动，不添加 GitHub Actions。
 - 图片按 VNDB 分级字段默认模糊，不建立永久图片镜像。
@@ -34,10 +43,13 @@
 - `apps/api/src/vndb.ts`、`app.ts`、`openapi.ts` 与测试：信号、优先级、错误映射、Server-Timing 和响应契约。
 - `apps/api/src/cache-maintenance.ts` 与测试：每小时清理过期 SQLite 缓存。
 - `apps/web/src/api.ts`、`queries.ts`、`query-client.ts`、`buffered-pages.ts` 与测试：端到端 signal、retry、预取与分页提升。
-- `apps/web/src/pages/`、`components.tsx` 与相关样式：主动请求优先级、分级图片控件结构和 compact 模式。
+- `apps/web/src/components.tsx` 与测试：150ms 意图预取、三槽预算以及 pointerdown/click high 提升。
+- `apps/web/src/pages/SearchPage.tsx`、`StaffPage.tsx`、`TagPage.tsx`：主动请求与自动缓冲优先级。
+- `apps/web/src/components.tsx`、`pages/VnPage.tsx`、相关样式与 happy-dom 测试：分级图片控件结构、层级与 compact 模式。
 - `Dockerfile`、`compose.yml`、`deploy/gtool.caddy`：生产容器与 HTTPS 路由。
 - `docs/deployment.md` 与 `docs/verification/gtool-production-acceptance.md`：手动发布、回滚和生产验收。
 - `docs/superpowers/specs/2026-08-11-priority-cancellation-image-reveal-design.md` 与对应实施计划。
+- `docs/superpowers/specs/2026-08-11-detail-priority-prefetch-timeout-design.md` 与对应实施计划。
 
 ## Open questions
 
@@ -49,8 +61,8 @@
 
 ## Risks
 
-- VNDB 上游仍可能波动；调度改善本地队头阻塞，但不能消除上游延迟。
-- 1500ms 启动间隔和并发 2 是保守策略，生产流量增长后需结合 VNDB 限额、429 与 Server-Timing 数据调整。
+- VNDB 上游仍可能波动；当前调度改善本地队头阻塞，但不能消除上游延迟。
+- 1500ms 启动间隔和并发 2 仍是保守策略；本轮没有修改这些参数，生产流量增长后需结合 VNDB 限额、429 与 Server-Timing 数据调整。
 - 首次图片访问仍受 VNDB CDN 和用户网络影响；尚无图片代理、Service Worker 或持久化图片缓存。
 - Node 内置 SQLite 仍会输出实验性警告；多实例部署需要稳定驱动与共享限流/缓存。
 - VNDB 免费 API 面向非商业用途；商业化前必须重新确认授权和请求策略。
@@ -65,12 +77,13 @@
 ## Next actions
 
 1. 部署合并后的版本并复验 `VN → 角色 → 声优 → 角色/作品` 与 `Tag → VN` 关系链。
-2. 用 Server-Timing 采集冷启动 queue/upstream 数据，比较主动搜索、Staff 分页与预取的 P50/P95。
-3. 根据 hover-to-click 命中率和图片下载耗时决定是否进一步限制低优先级预取或引入图片代理。
+2. 用 Server-Timing 采集冷启动 queue/upstream 数据，比较角色详情、主动搜索、Staff 分页与预取的 P50/P95。
+3. 根据 hover-to-click 命中率评估 150ms 延迟和 3 槽 low 预算是否需要调整，并根据图片下载耗时决定是否引入图片代理。
 4. 明确 Gal 排行规则后先写 API 契约与验收用例，再替换占位页。
 
 ## Validation evidence
 
 - PR #3 合并前开发分支基线：Tag 2/2、API 29/29、Web 60/60 通过。
+- 本轮延迟修复合并远端部署分支前：Tag 2/2、API 31/31、Web 63/63，根 typecheck、production build、`git diff --check` 均通过；独立代码复审 PASS。
 - 上一生产版本：容器健康、HTTPS 首页与健康接口返回 200，真实 `v17` 查询成功且重复请求为 `X-Cache: HIT`。
 - 生产浏览器烟测：大厅与知识图鉴加载正常，`v17` 显示“时空轮回”，控制台 0 error/0 warning。
