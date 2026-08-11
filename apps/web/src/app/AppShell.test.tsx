@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, useRoutes } from "react-router-dom";
+import { MemoryRouter, useNavigate, useRoutes } from "react-router-dom";
 import { expect, it, vi } from "vitest";
 import { TrailProvider } from "../trail";
 import { appRoutes } from "./routes";
@@ -45,4 +45,14 @@ it("updates cache status after mounting an ArtistPage without render-phase warni
   await act(async () => { client.setQueryData(["artist", "s1928"], (value) => value); });
   expect(error).not.toHaveBeenCalled();
   await act(async () => root.unmount()); container.remove(); error.mockRestore(); vi.unstubAllGlobals();
+});
+
+it("navigates from a stable route to an uncached artist without render-phase warnings", async () => {
+  (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => new Response(JSON.stringify(String(input).includes("/vns?") ? { items: [], page: 1, pageSize: 12, more: false } : { entity: { id: "s1928", type: "staff", name: { primary: "画师", original: null, romanized: null, alternatives: [] }, image: null }, description: null, language: null, aliases: [], externalLinks: [] }), { status: 200, headers: { "Content-Type": "application/json" } })));
+  function NavigateToArtist() { const navigate = useNavigate(); useEffect(() => { navigate("/knowledge/artist/s1928"); }, [navigate]); return null; }
+  const Routes = () => useRoutes(appRoutes); const container = document.createElement("div"); document.body.append(container); const root = createRoot(container); const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  await act(async () => root.render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/ranking"]}><TrailProvider><NavigateToArtist /><Routes /></TrailProvider></MemoryRouter></QueryClientProvider>));
+  expect(error).not.toHaveBeenCalled(); await act(async () => root.unmount()); container.remove(); error.mockRestore(); vi.unstubAllGlobals();
 });

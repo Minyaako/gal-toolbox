@@ -268,6 +268,13 @@ describe("entity intent prefetch policy", () => {
 });
 
 describe("artist intent prefetch policy", () => {
+  it("cancels a pending artist hover timer when the link unmounts", async () => {
+    vi.useFakeTimers(); const fetcher = vi.fn(async () => new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } })); vi.stubGlobal("fetch", fetcher);
+    const container = document.createElement("div"); document.body.append(container); const root = createRoot(container); const artist: EntitySummary = { ...entity, id: "s1928", type: "staff" };
+    await act(async () => root.render(<Providers><ArtistPrefetchLink staff={artist}>Artist</ArtistPrefetchLink></Providers>)); const link = container.querySelector<HTMLAnchorElement>("a")!;
+    await act(async () => link.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }))); await act(async () => root.unmount()); await vi.advanceTimersByTimeAsync(150);
+    expect(fetcher).not.toHaveBeenCalled(); container.remove();
+  });
   it("delays hover, prefetches on focus, and promotes only once", async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ items: [], page: 1, pageSize: 12, more: false }), {

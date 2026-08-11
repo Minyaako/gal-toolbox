@@ -27,4 +27,12 @@ describe("path-aware exploration trails", () => {
     expect(isEntitySummary(staff)).toBe(true);
     expect(normalizeTrail([{ entity: { ...staff, name: null }, path: "/knowledge/staff/s1928" }, { ...staff, name: null }])).toEqual([]);
   });
+
+  it("rejects null or missing names and invalid entity types in both storage formats", () => {
+    expect(normalizeTrail([
+      { entity: { ...staff, name: null }, path: "/knowledge/artist/s1928" },
+      { id: "s2", type: "staff", image: null },
+      { ...staff, type: "artist" },
+    ])).toEqual([]);
+  });
 });

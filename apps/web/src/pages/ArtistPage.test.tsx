@@ -31,3 +31,11 @@ it("keeps a long artist note visible in a narrow work card", () => {
   expect(markup).toContain("must wrap instead of being clipped");
   expect(readFileSync("src/styles/knowledge.css", "utf8")).toMatch(/\.card-meta \.artist-credits[^}]*white-space:\s*normal/);
 });
+
+it("uses the artist scope and buffered-page loader label when more work pages exist", () => {
+  const client = new QueryClient(); client.setQueryData(["artist", "s1928"], detail); client.setQueryData(["artist-vns", "s1928"], { pages: [{ ...page, more: true }], pageParams: [1] });
+  const markup = renderToStaticMarkup(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/knowledge/artist/s1928"]}><SettingsProvider><TrailProvider><Routes><Route path="/knowledge/artist/:id" element={<ArtistPage />} /></Routes></TrailProvider></SettingsProvider></MemoryRouter></QueryClientProvider>);
+  expect(markup).toContain("继续浏览作品");
+  expect(readFileSync("src/pages/ArtistPage.tsx", "utf8")).toContain("scope: `artist:${id}`");
+  expect(readFileSync("src/pages/ArtistPage.tsx", "utf8")).toContain("pageScope={`artist:${id}`}");
+});

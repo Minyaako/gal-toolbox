@@ -87,7 +87,7 @@ describe("artist relations", () => {
       staff: { id: "s1928", type: "staff", name: { primary: "画师", original: "原文", romanized: "Artist", alternatives: [] }, image: null },
       credits: [{ role: "art", note: null }, { role: "chardesign", note: "Character sprites, BG" }],
     }, {
-      staff: { id: "s223", type: "staff", name: { primary: "第二画师", original: "原文二", romanized: "Second Artist", alternatives: [] }, image: null },
+      staff: { id: "s223", type: "staff", name: { primary: "第二画师", original: null, romanized: "Second Artist", alternatives: [] }, image: null },
       credits: [{ role: "art", note: "Character sprites, BG" }],
     }] });
     const markup = renderToStaticMarkup(<QueryClientProvider client={queryClient}><MemoryRouter initialEntries={["/knowledge/vn/v1"]}><SettingsProvider><TrailProvider><Routes><Route path="/knowledge/vn/:id" element={<VnPage />} /></Routes></TrailProvider></SettingsProvider></MemoryRouter></QueryClientProvider>);
@@ -97,7 +97,8 @@ describe("artist relations", () => {
     expect(markup).toContain("Character sprites, BG");
     expect((markup.match(/\/knowledge\/artist\/s1928/g) ?? [])).toHaveLength(1);
     expect((markup.match(/\/knowledge\/artist\/s223/g) ?? [])).toHaveLength(1);
-    expect(markup).toContain("原文"); expect(markup).toContain("Artist"); expect(markup).toContain("原文二"); expect(markup).toContain("Second Artist");
+    expect(markup).toContain("原文"); expect(markup).toContain("Artist"); expect(markup).toContain("Second Artist");
+    expect(markup).toMatch(/href="\/knowledge\/artist\/s223"[\s\S]*?Character sprites, BG/);
   });
 
   it("omits the artist section when no artist relation exists", () => {
