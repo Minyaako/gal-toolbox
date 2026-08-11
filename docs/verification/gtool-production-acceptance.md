@@ -7,10 +7,10 @@ Verified: 2026-08-11 (Asia/Shanghai)
 
 - Repository: `https://github.com/Minyaako/gal-toolbox`
 - Local implementation worktree: `D:\seRver\.worktrees\gal-toolbox-gtool-deployment`
-- Deployed commit: `e8b184b3778b3b17d519f778f4adc5828d674c45`
-- Remote release: `/srv/apps/gal-toolbox/releases/e8b184b3778b3b17d519f778f4adc5828d674c45`
+- Deployed commit: `64e038195debf998ed89d509f2a36290dabc695f`
+- Remote release: `/srv/apps/gal-toolbox/releases/64e038195debf998ed89d509f2a36290dabc695f`
 - Image: `gal-toolbox:local`
-- Image ID: `sha256:f5eb29839e7c86307abf01bd51a28f0a76ff7eb2be47e29914f8bc412afcbc68`
+- Image ID: `sha256:b2cac551bb312c9a1d1d24cb6d96e709aa1762e7572c5201f365f5ea07bd12aa`
 - Public origin: `https://gtool.minyako.top`
 
 ## Runtime evidence
@@ -34,6 +34,12 @@ Verified: 2026-08-11 (Asia/Shanghai)
   `{"status":"ok","cache":"sqlite","apiVersion":1}`.
 - A real `v17` VNDB search returned HTTP 200.
 - Repeating the same search returned `X-Cache: HIT`.
+- A Chinese Tag search for `悬疑` returned tag `g19` with `X-Cache: LOCAL`.
+- The production SPA routes `/`, `/knowledge`, `/ranking`, and `/settings`
+  returned the latest 1534-byte application entry document.
+- A real-browser smoke test loaded “百宝箱大厅”, navigated to “知识图鉴”,
+  searched `v17`, displayed “时空轮回”, and produced 0 console errors and
+  0 console warnings.
 - Response headers include `X-Content-Type-Options: nosniff` and
   `Referrer-Policy: strict-origin-when-cross-origin`.
 
@@ -62,15 +68,14 @@ Verified: 2026-08-11 (Asia/Shanghai)
 Inspect the service:
 
 ```sh
-cd /srv/apps/gal-toolbox/releases/e8b184b3778b3b17d519f778f4adc5828d674c45
+cd /srv/apps/gal-toolbox/releases/64e038195debf998ed89d509f2a36290dabc695f
 sudo docker compose -p gal-toolbox ps
 sudo docker compose -p gal-toolbox logs --tail=100 gal-toolbox
 ```
 
-The preceding release remains at
-`/srv/apps/gal-toolbox/releases/ba2d61aa22a0cfcffc48b95d71a62adad07f08b8`.
-It can be rebuilt with the same Compose project for emergency rollback, though
-it predates the VNDB network-error mapping fix. To withdraw the public service,
+The preceding verified release remains at
+`/srv/apps/gal-toolbox/releases/e8b184b3778b3b17d519f778f4adc5828d674c45`.
+It can be rebuilt with the same Compose project for emergency rollback. To withdraw the public service,
 stop the Compose project, remove only
 `/srv/server-stack-prod/caddy/sites-enabled/gtool.caddy`, validate Caddy, and
 restart `server-caddy`. Do not remove the shared Caddy volumes.
