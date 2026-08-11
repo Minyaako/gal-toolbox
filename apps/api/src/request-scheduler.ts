@@ -191,6 +191,9 @@ export class RequestScheduler {
       .then(() => item.run(item.controller.signal))
       .then(
         (value) => {
+          if (this.items.get(item.key) === item) {
+            this.items.delete(item.key);
+          }
           const result: ScheduledResult<unknown> = {
             value,
             queueWaitMs: Math.max(0, startedAt - item.enqueuedAt),
@@ -198,13 +201,20 @@ export class RequestScheduler {
             queueDepth: Math.max(0, queueDepth),
             priority: finalPriority,
           };
-          for (const consumer of item.consumers) {
+          const consumers = [...item.consumers];
+          item.consumers.clear();
+          for (const consumer of consumers) {
             this.detachAbortListener(consumer);
             consumer.resolve(result);
           }
         },
         (error) => {
-          for (const consumer of item.consumers) {
+          if (this.items.get(item.key) === item) {
+            this.items.delete(item.key);
+          }
+          const consumers = [...item.consumers];
+          item.consumers.clear();
+          for (const consumer of consumers) {
             this.detachAbortListener(consumer);
             consumer.reject(error);
           }

@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getSearchPage, type EntityType } from "../api";
 import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, SectionHeading, StatePanel } from "../components";
+import { searchQuery } from "../queries";
 
 const tabs: Array<{ value: EntityType; label: string; hint: string }> = [
   { value: "vn", label: "作品", hint: "标题、别名或 VNDB ID" },
@@ -20,13 +21,7 @@ export function SearchPage() {
   const nextPagePriority = useRef<"high" | "normal">("high");
 
   const search = useInfiniteQuery({
-    queryKey: ["search", type, query],
-    queryFn: ({ pageParam, signal }) => getSearchPage(type, query, pageParam, 12, {
-      signal,
-      priority: nextPagePriority.current,
-    }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => (lastPage.more ? lastPage.page + 1 : undefined),
+    ...searchQuery(type, query, () => nextPagePriority.current),
     enabled: Boolean(query),
   });
   const fetchNextPage = useCallback(async (priority: "high" | "normal") => {

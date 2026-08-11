@@ -282,6 +282,34 @@ describe("RequestScheduler", () => {
     );
   });
 
+  it("starts fresh same-key work when a resolved consumer re-enters schedule", async () => {
+    const clock = controlledClock();
+    const scheduler = new RequestScheduler({
+      intervalMs: 0,
+      maxConcurrent: 2,
+      agingMs: 8_000,
+      now: clock.now,
+      setTimer: clock.setTimer,
+      clearTimer: clock.clearTimer,
+    });
+    let runs = 0;
+    const first = scheduler.schedule({
+      key: "same",
+      priority: "normal",
+      run: async () => ++runs,
+    });
+    const second = first.then(() => scheduler.schedule({
+      key: "same",
+      priority: "normal",
+      run: async () => ++runs,
+    }));
+
+    await first;
+    await flushScheduler();
+    expect(runs).toBe(2);
+    await expect(second).resolves.toMatchObject({ value: 2 });
+  });
+
   it("keeps shared running work alive when only one consumer aborts", async () => {
     const { schedule, signals, work } = harness();
     const prefetchController = new AbortController();

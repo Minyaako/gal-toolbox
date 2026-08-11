@@ -142,6 +142,37 @@ describe("query request semantics", () => {
     ]);
   });
 
+  it("uses high for a new search page one after normal automatic buffering", async () => {
+    const priorities: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
+      priorities.push(new Headers(init?.headers).get("X-Request-Priority") ?? "");
+      return new Response(JSON.stringify({ items: [], more: true, page: 1, pageSize: 12 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+    let nextPagePriority: "high" | "normal" = "high";
+    const firstSearch = searchQuery("vn", "a", () => nextPagePriority);
+    const firstQueryFn = firstSearch.queryFn as (context: {
+      signal: AbortSignal;
+      pageParam: number;
+    }) => Promise<unknown>;
+    await firstQueryFn({ signal: new AbortController().signal, pageParam: 1 });
+    nextPagePriority = "normal";
+    await firstQueryFn({ signal: new AbortController().signal, pageParam: 2 });
+
+    const activeSearch = searchQuery("vn", "Ever17", () => nextPagePriority);
+    await (activeSearch.queryFn as (context: {
+      signal: AbortSignal;
+      pageParam: number;
+    }) => Promise<unknown>)({
+      signal: new AbortController().signal,
+      pageParam: 1,
+    });
+
+    expect(priorities).toEqual(["high", "normal", "high"]);
+  });
+
   it("uses high for all detail queries and normal for relation pages", async () => {
     const priorities: string[] = [];
     const signals: AbortSignal[] = [];

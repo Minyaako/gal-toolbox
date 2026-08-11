@@ -69,7 +69,7 @@ export const searchQuery = (
   queryKey: ["search", type, query],
   queryFn: ({ pageParam, signal }) => getSearchPage(type, query, pageParam, 12, {
     signal,
-    priority: getPriority(),
+    priority: pageParam === 1 ? "high" : getPriority(),
   }),
   initialPageParam: 1,
   getNextPageParam: (lastPage) => lastPage.more ? lastPage.page + 1 : undefined,
