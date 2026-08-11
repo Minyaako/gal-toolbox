@@ -79,6 +79,7 @@ export function TagPage() {
               hasNextPage={buffered.canRevealNextPage}
               isFetching={buffered.isWaitingForBuffer}
               buffered={buffered.hasBufferedPage}
+              pageScope={`tag:${id}`}
               pageProgress={buffered.visiblePageCount}
               onLoad={() => void buffered.revealNextPage()}
               label={buffered.hasBufferedPage ? "下一页已准备好" : "继续浏览相关作品"}

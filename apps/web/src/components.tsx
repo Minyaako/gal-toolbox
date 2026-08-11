@@ -314,6 +314,7 @@ export function AutoPageLoader({
   hasNextPage,
   isFetching,
   buffered = false,
+  pageScope,
   pageProgress,
   onLoad,
   label = "继续加载",
@@ -321,17 +322,19 @@ export function AutoPageLoader({
   hasNextPage: boolean;
   isFetching: boolean;
   buffered?: boolean;
+  pageScope: string;
   pageProgress: number;
   onLoad: () => void;
   label?: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const autoLoadArmedRef = useRef(true);
-  const lastAutoLoadProgressRef = useRef<number | null>(null);
+  const lastAutoLoadKeyRef = useRef<string | null>(null);
+  const autoLoadKey = `${pageScope}:${pageProgress}`;
 
   useEffect(() => {
     autoLoadArmedRef.current = true;
-  }, [pageProgress]);
+  }, [autoLoadKey]);
 
   useEffect(() => {
     const target = sentinelRef.current;
@@ -347,9 +350,9 @@ export function AutoPageLoader({
         autoLoadArmedRef.current = next.armed;
         if (
           next.shouldLoad &&
-          lastAutoLoadProgressRef.current !== pageProgress
+          lastAutoLoadKeyRef.current !== autoLoadKey
         ) {
-          lastAutoLoadProgressRef.current = pageProgress;
+          lastAutoLoadKeyRef.current = autoLoadKey;
           onLoad();
         }
       },
@@ -360,7 +363,7 @@ export function AutoPageLoader({
       active = false;
       observer.disconnect();
     };
-  }, [hasNextPage, isFetching, onLoad, pageProgress]);
+  }, [hasNextPage, isFetching, onLoad, autoLoadKey]);
 
   if (!hasNextPage) return null;
   return (
