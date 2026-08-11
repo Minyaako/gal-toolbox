@@ -75,4 +75,3 @@ At wide desktop, verify both artist works and staff roles use the same computed 
 git add apps/web/src/styles/knowledge.css apps/web/src/pages/ArtistPage.test.tsx
 git commit -m "fix(web): unify artist and staff work grids"
 ```
-
