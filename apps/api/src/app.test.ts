@@ -49,4 +49,28 @@ describe("public API", () => {
     expect(novels.statusCode).toBe(200);
     expect(novels.json()).toMatchObject({ pageSize: 12, items: [{ id: "v17", type: "vn" }] });
   });
+
+  it("maps VNDB network failures to the upstream-unavailable response", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "gal-toolbox-app-"));
+    const cache = new CacheStore(join(directory, "cache.sqlite"));
+    const fetcher = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const app = await buildApp({ cache, client: new VndbClient(cache, fetcher, 0) });
+    cleanup.push(
+      async () => app.close(),
+      () => cache.close(),
+      () => rmSync(directory, { recursive: true, force: true }),
+    );
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/search?type=vn&q=v17&page=1&pageSize=1",
+    });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({
+      error: { code: "UPSTREAM_UNAVAILABLE" },
+    });
+  });
 });
