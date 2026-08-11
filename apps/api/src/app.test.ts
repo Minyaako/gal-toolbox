@@ -25,6 +25,49 @@ async function createTestApp(fetcher: typeof fetch) {
 }
 
 describe("public API", () => {
+  it("forwards high priority and exposes queue and upstream timing", async () => {
+    const app = await createTestApp((async () => new Response(JSON.stringify({
+      results: [{ id: "v17", title: "Ever17", titles: [], aliases: [], image: null }],
+      more: false,
+    }), { status: 200, headers: { "Content-Type": "application/json" } })) as typeof fetch);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/vns/v17",
+      headers: { "X-Request-Priority": "high" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["x-request-priority"]).toBe("high");
+    expect(response.headers["server-timing"]).toMatch(
+      /queue;dur=\d+(?:\.\d+)?, upstream;dur=\d+(?:\.\d+)?/,
+    );
+  });
+
+  it("aborts VNDB work when the browser disconnects", async () => {
+    let upstreamSignal: AbortSignal | undefined;
+    let signalRecorded!: () => void;
+    const recorded = new Promise<void>((resolve) => { signalRecorded = resolve; });
+    const app = await createTestApp((async (_input, init) => new Promise<Response>((_resolve, reject) => {
+      upstreamSignal = init?.signal ?? undefined;
+      signalRecorded();
+      upstreamSignal?.addEventListener("abort", () => reject(upstreamSignal?.reason), { once: true });
+    })) as typeof fetch);
+    await app.listen({ host: "127.0.0.1", port: 0 });
+    const address = app.server.address();
+    if (!address || typeof address === "string") throw new Error("Expected TCP address");
+    const controller = new AbortController();
+    const request = fetch(`http://127.0.0.1:${address.port}/api/v1/vns/v17`, {
+      signal: controller.signal,
+    });
+    await recorded;
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ name: "AbortError" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(upstreamSignal?.aborted).toBe(true);
+  });
+
   it("serves OpenAPI and the Tag exploration endpoints", async () => {
     const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body)) as { fields?: string };

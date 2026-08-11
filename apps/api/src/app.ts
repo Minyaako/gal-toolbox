@@ -3,6 +3,7 @@ import fastifyStatic from "@fastify/static";
 import Fastify, {
   type FastifyInstance,
   type FastifyReply,
+  type FastifyRequest,
 } from "fastify";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -24,6 +25,7 @@ import {
   VndbClient,
   VndbError,
 } from "./vndb.js";
+import type { RequestPriority } from "./request-scheduler.js";
 
 const SEARCH_TTL = 15 * 60 * 1000;
 const ENTITY_TTL = 24 * 60 * 60 * 1000;
@@ -72,6 +74,26 @@ function setPublicCache(reply: FastifyReply, seconds: number): void {
   reply.header("Cache-Control", `public, max-age=${seconds}`);
 }
 
+function requestPriority(request: FastifyRequest): RequestPriority {
+  const value = request.headers["x-request-priority"];
+  return value === "high" || value === "normal" || value === "low"
+    ? value
+    : "normal";
+}
+
+function setSchedulingHeaders(
+  reply: FastifyReply,
+  priority: RequestPriority,
+  queueWaitMs: number,
+  upstreamDurationMs: number,
+): void {
+  reply.header("X-Request-Priority", priority);
+  reply.header(
+    "Server-Timing",
+    `queue;dur=${queueWaitMs}, upstream;dur=${upstreamDurationMs}`,
+  );
+}
+
 function containsHan(value: string): boolean {
   return /[\u3400-\u9fff]/u.test(value);
 }
@@ -106,6 +128,48 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({ logger: options.logger ?? false });
   const client = options.client ?? new VndbClient(options.cache);
 
+  async function queryVndb<T>(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    endpoint: string,
+    body: Record<string, unknown>,
+    ttlMs: number,
+  ) {
+    const priority = requestPriority(request);
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    const abortOnReplyClose = () => {
+      if (!reply.raw.writableEnded) abort();
+    };
+    request.raw.once("aborted", abort);
+    reply.raw.once("close", abortOnReplyClose);
+    try {
+      const result = await client.query<T>(endpoint, body, ttlMs, {
+        priority,
+        signal: controller.signal,
+      });
+      setCacheHeader(reply, result.cacheStatus);
+      setSchedulingHeaders(
+        reply,
+        result.priority,
+        result.queueWaitMs,
+        result.upstreamDurationMs,
+      );
+      request.log.info({
+        endpoint,
+        cacheStatus: result.cacheStatus,
+        queueWaitMs: result.queueWaitMs,
+        upstreamDurationMs: result.upstreamDurationMs,
+        queueDepth: result.queueDepth,
+        requestId: request.id,
+      }, "VNDB request completed");
+      return result;
+    } finally {
+      request.raw.removeListener("aborted", abort);
+      reply.raw.removeListener("close", abortOnReplyClose);
+    }
+  }
+
   await app.register(cors, {
     origin: process.env.NODE_ENV === "production" ? false : true,
   });
@@ -139,6 +203,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       const matches = searchLocalizedTags(term);
       const offset = (page - 1) * pageSize;
       setCacheHeader(reply, "LOCAL");
+      setSchedulingHeaders(reply, requestPriority(request), 0, 0);
       setPublicCache(reply, 60);
       return {
         items: matches.slice(offset, offset + pageSize).map((tag) =>
@@ -159,7 +224,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
           : type === "staff"
             ? fields.staffSummary
             : fields.tagSummary;
-    const result = await client.query<RawVn | RawCharacter | RawStaff | RawTag>(
+    const result = await queryVndb<RawVn | RawCharacter | RawStaff | RawTag>(
+      request,
+      reply,
       endpoint,
       {
         filters: ["search", "=", term],
@@ -170,7 +237,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       },
       SEARCH_TTL,
     );
-    setCacheHeader(reply, result.cacheStatus);
     setPublicCache(reply, 60);
 
     const mapped = result.data.results.map((item) =>
@@ -192,7 +258,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   app.get<{ Params: { id: string } }>("/api/v1/vns/:id", async (request, reply) => {
     validateId(request.params.id, "v");
-    const result = await client.query<RawVnDetail>(
+    const result = await queryVndb<RawVnDetail>(
+      request,
+      reply,
       "/vn",
       {
         filters: ["id", "=", request.params.id],
@@ -207,7 +275,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       },
       RELATION_TTL,
     );
-    setCacheHeader(reply, result.cacheStatus);
     setPublicCache(reply, 300);
     const vn = result.data.results[0];
     if (!vn) return reply.code(404).send({ error: { code: "NOT_FOUND", message: "未找到该作品。", requestId: request.id } });
@@ -239,7 +306,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   app.get<{ Params: { id: string } }>("/api/v1/characters/:id", async (request, reply) => {
     validateId(request.params.id, "c");
-    const result = await client.query<RawCharacterDetail>(
+    const result = await queryVndb<RawCharacterDetail>(
+      request,
+      reply,
       "/character",
       {
         filters: ["id", "=", request.params.id],
@@ -248,7 +317,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       },
       ENTITY_TTL,
     );
-    setCacheHeader(reply, result.cacheStatus);
     setPublicCache(reply, 300);
     const character = result.data.results[0];
     if (!character) return reply.code(404).send({ error: { code: "NOT_FOUND", message: "未找到该角色。", requestId: request.id } });
@@ -264,7 +332,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   app.get<{ Params: { id: string } }>("/api/v1/staff/:id", async (request, reply) => {
     validateId(request.params.id, "s");
-    const result = await client.query<RawStaffDetail>(
+    const result = await queryVndb<RawStaffDetail>(
+      request,
+      reply,
       "/staff",
       {
         filters: ["and", ["id", "=", request.params.id], ["ismain", "=", 1]],
@@ -273,7 +343,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       },
       ENTITY_TTL,
     );
-    setCacheHeader(reply, result.cacheStatus);
     setPublicCache(reply, 300);
     const staff = result.data.results[0];
     if (!staff) return reply.code(404).send({ error: { code: "NOT_FOUND", message: "未找到该声优或制作人员。", requestId: request.id } });
@@ -289,7 +358,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.get<{ Params: { id: string } }>("/api/v1/staff/:id/characters", async (request, reply) => {
     validateId(request.params.id, "s");
     const { page, pageSize } = parsePage(request.query as Record<string, unknown>);
-    const result = await client.query<RawCharacterDetail>(
+    const result = await queryVndb<RawCharacterDetail>(
+      request,
+      reply,
       "/character",
       {
         filters: ["seiyuu", "=", ["id", "=", request.params.id]],
@@ -300,7 +371,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       },
       RELATION_TTL,
     );
-    setCacheHeader(reply, result.cacheStatus);
     setPublicCache(reply, 60);
     return {
       items: result.data.results.map((character) => ({
@@ -318,7 +388,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   app.get<{ Params: { id: string } }>("/api/v1/tags/:id", async (request, reply) => {
     validateId(request.params.id, "g");
-    const result = await client.query<RawTagDetail>(
+    const result = await queryVndb<RawTagDetail>(
+      request,
+      reply,
       "/tag",
       {
         filters: ["id", "=", request.params.id],
@@ -327,7 +399,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       },
       ENTITY_TTL,
     );
-    setCacheHeader(reply, result.cacheStatus);
     setPublicCache(reply, 300);
     const tag = result.data.results[0];
     if (!tag) {
@@ -346,7 +417,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.get<{ Params: { id: string } }>("/api/v1/tags/:id/vns", async (request, reply) => {
     validateId(request.params.id, "g");
     const { page, pageSize } = parsePage(request.query as Record<string, unknown>);
-    const result = await client.query<RawVn>(
+    const result = await queryVndb<RawVn>(
+      request,
+      reply,
       "/vn",
       {
         filters: ["tag", "=", request.params.id],
@@ -358,7 +431,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       },
       RELATION_TTL,
     );
-    setCacheHeader(reply, result.cacheStatus);
     setPublicCache(reply, 60);
     return {
       items: result.data.results.map(mapVnSummary),
@@ -369,6 +441,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   app.setErrorHandler((error, request, reply) => {
+    if (
+      error instanceof Error &&
+      error.name === "AbortError" &&
+      (request.raw.aborted || reply.raw.destroyed)
+    ) {
+      return reply;
+    }
     if (error instanceof VndbError) {
       const rateLimited = error.status === 429;
       return reply.code(rateLimited ? 429 : 502).send({

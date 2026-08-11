@@ -52,6 +52,26 @@ const cacheHeader = {
   },
 } as const;
 
+const schedulingHeaders = {
+  ...cacheHeader,
+  "Server-Timing": {
+    description: "Queue wait and VNDB upstream durations in milliseconds",
+    schema: { type: "string" },
+  },
+  "X-Request-Priority": {
+    description: "Final scheduler priority after promotion and aging",
+    schema: { type: "string", enum: ["high", "normal", "low"] },
+  },
+} as const;
+
+const priorityParameter = {
+  name: "X-Request-Priority",
+  in: "header",
+  required: false,
+  description: "Requested scheduler priority; invalid values use normal",
+  schema: { type: "string", enum: ["high", "normal", "low"], default: "normal" },
+} as const;
+
 const idParameter = (name: string, pattern: string) => ({
   name: "id",
   in: "path",
@@ -122,6 +142,7 @@ export const openApiDocument = {
         description:
           "Tag searches also accept Simplified Chinese names from the bundled localization index.",
         parameters: [
+          priorityParameter,
           {
             name: "type",
             in: "query",
@@ -139,7 +160,7 @@ export const openApiDocument = {
         responses: {
           "200": {
             description: "Entity page",
-            headers: cacheHeader,
+            headers: schedulingHeaders,
             content: { "application/json": { schema: { $ref: "#/components/schemas/EntityPage" } } },
           },
           "400": errorResponse,
@@ -152,11 +173,11 @@ export const openApiDocument = {
       get: {
         tags: ["Visual novels"],
         summary: "Visual novel details, cast, relations and tags",
-        parameters: [idParameter("Visual novel", "^v\\d+$")],
+        parameters: [priorityParameter, idParameter("Visual novel", "^v\\d+$")],
         responses: {
           "200": {
             description: "Visual novel detail",
-            headers: cacheHeader,
+            headers: schedulingHeaders,
             content: { "application/json": { schema: { $ref: "#/components/schemas/VnDetail" } } },
           },
           "404": errorResponse,
@@ -167,11 +188,11 @@ export const openApiDocument = {
       get: {
         tags: ["Characters"],
         summary: "Character details and VN appearances",
-        parameters: [idParameter("Character", "^c\\d+$")],
+        parameters: [priorityParameter, idParameter("Character", "^c\\d+$")],
         responses: {
           "200": {
             description: "Character detail",
-            headers: cacheHeader,
+            headers: schedulingHeaders,
             content: { "application/json": { schema: { $ref: "#/components/schemas/CharacterDetail" } } },
           },
           "404": errorResponse,
@@ -182,11 +203,11 @@ export const openApiDocument = {
       get: {
         tags: ["Staff"],
         summary: "Staff details and aliases",
-        parameters: [idParameter("Staff", "^s\\d+$")],
+        parameters: [priorityParameter, idParameter("Staff", "^s\\d+$")],
         responses: {
           "200": {
             description: "Staff detail",
-            headers: cacheHeader,
+            headers: schedulingHeaders,
             content: { "application/json": { schema: { $ref: "#/components/schemas/StaffDetail" } } },
           },
           "404": errorResponse,
@@ -197,11 +218,11 @@ export const openApiDocument = {
       get: {
         tags: ["Staff"],
         summary: "Characters voiced by a staff member",
-        parameters: [idParameter("Staff", "^s\\d+$"), ...pageParameters],
+        parameters: [priorityParameter, idParameter("Staff", "^s\\d+$"), ...pageParameters],
         responses: {
           "200": {
             description: "Staff character page",
-            headers: cacheHeader,
+            headers: schedulingHeaders,
             content: { "application/json": { schema: { $ref: "#/components/schemas/StaffCharacterPage" } } },
           },
         },
@@ -211,11 +232,11 @@ export const openApiDocument = {
       get: {
         tags: ["Tags"],
         summary: "Tag details",
-        parameters: [idParameter("Tag", "^g\\d+$")],
+        parameters: [priorityParameter, idParameter("Tag", "^g\\d+$")],
         responses: {
           "200": {
             description: "Tag detail",
-            headers: cacheHeader,
+            headers: schedulingHeaders,
             content: { "application/json": { schema: { $ref: "#/components/schemas/TagDetail" } } },
           },
           "404": errorResponse,
@@ -226,11 +247,11 @@ export const openApiDocument = {
       get: {
         tags: ["Tags"],
         summary: "Highest-rated visual novels carrying a tag",
-        parameters: [idParameter("Tag", "^g\\d+$"), ...pageParameters],
+        parameters: [priorityParameter, idParameter("Tag", "^g\\d+$"), ...pageParameters],
         responses: {
           "200": {
             description: "Visual novel page",
-            headers: cacheHeader,
+            headers: schedulingHeaders,
             content: { "application/json": { schema: { $ref: "#/components/schemas/EntityPage" } } },
           },
         },

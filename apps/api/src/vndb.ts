@@ -6,6 +6,10 @@ import type {
   EntitySummary,
 } from "./types.js";
 import { localizeTagName } from "./tag-localization.js";
+import {
+  RequestScheduler,
+  type RequestPriority,
+} from "./request-scheduler.js";
 
 const VNDB_API = "https://api.vndb.org/kana";
 
@@ -14,9 +18,18 @@ type VndbResponse<T> = {
   more: boolean;
 };
 
-type QueryResult<T> = {
+export type QueryResult<T> = {
   data: VndbResponse<T>;
   cacheStatus: CacheStatus;
+  queueWaitMs: number;
+  upstreamDurationMs: number;
+  queueDepth: number;
+  priority: RequestPriority;
+};
+
+export type VndbQueryOptions = {
+  priority?: RequestPriority;
+  signal?: AbortSignal;
 };
 
 type FetchLike = typeof fetch;
@@ -30,86 +43,79 @@ export class VndbError extends Error {
   }
 }
 
-class RequestPacer {
-  private nextStartAt = 0;
-  private tail = Promise.resolve();
-
-  constructor(private readonly intervalMs: number) {}
-
-  schedule<T>(task: () => Promise<T>): Promise<T> {
-    const run = this.tail.then(async () => {
-      const waitMs = Math.max(0, this.nextStartAt - Date.now());
-      if (waitMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
-      }
-      this.nextStartAt = Date.now() + this.intervalMs;
-      return task();
-    });
-    this.tail = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    return run;
-  }
-}
-
 export class VndbClient {
-  private readonly inFlight = new Map<string, Promise<QueryResult<unknown>>>();
-  private readonly pacer: RequestPacer;
+  private readonly scheduler: RequestScheduler;
 
   constructor(
     private readonly cache: CacheStore,
     private readonly fetcher: FetchLike = fetch,
     intervalMs = Number(process.env.VNDB_MIN_INTERVAL_MS ?? 1500),
+    private readonly timeoutMs = 12_000,
   ) {
-    this.pacer = new RequestPacer(intervalMs);
+    this.scheduler = new RequestScheduler({
+      intervalMs,
+      maxConcurrent: 2,
+      agingMs: 8_000,
+    });
   }
 
   async query<T>(
     endpoint: string,
     body: Record<string, unknown>,
     ttlMs: number,
+    options: VndbQueryOptions = {},
   ): Promise<QueryResult<T>> {
+    const priority = options.priority ?? "normal";
     const key = cacheKey(endpoint, body);
     const cached = this.cache.get<VndbResponse<T>>(key);
     if (cached && !cached.expired) {
-      return { data: cached.value, cacheStatus: "HIT" };
+      return {
+        data: cached.value,
+        cacheStatus: "HIT",
+        queueWaitMs: 0,
+        upstreamDurationMs: 0,
+        queueDepth: 0,
+        priority,
+      };
     }
 
-    const existing = this.inFlight.get(key);
-    if (existing) return existing as Promise<QueryResult<T>>;
+    const scheduled = await this.scheduler.schedule<{
+      data: VndbResponse<T>;
+      cacheStatus: "MISS" | "STALE";
+    }>({
+      key,
+      priority,
+      signal: options.signal,
+      run: async (workSignal) => {
+        try {
+          const response = await this.fetcher(`${VNDB_API}${endpoint}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "User-Agent": "gal-toolbox/0.1 (+https://github.com/Minyaako/gal-toolbox)",
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.any([workSignal, AbortSignal.timeout(this.timeoutMs)]),
+          });
 
-    const request = this.pacer.schedule(async () => {
-      try {
-        const response = await this.fetcher(`${VNDB_API}${endpoint}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "User-Agent": "gal-toolbox/0.1 (+https://github.com/Minyaako/gal-toolbox)",
-          },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(12_000),
-        });
+          if (!response.ok) {
+            throw new VndbError(response.status, await response.text());
+          }
 
-        if (!response.ok) {
-          throw new VndbError(response.status, await response.text());
+          const data = (await response.json()) as VndbResponse<T>;
+          this.cache.set(key, data, ttlMs);
+          return { data, cacheStatus: "MISS" as const };
+        } catch (error) {
+          const name = error instanceof Error ? error.name : undefined;
+          if (cached && name !== "AbortError" && name !== "TimeoutError") {
+            return { data: cached.value, cacheStatus: "STALE" as const };
+          }
+          throw error;
         }
-
-        const data = (await response.json()) as VndbResponse<T>;
-        this.cache.set(key, data, ttlMs);
-        return { data, cacheStatus: "MISS" as const };
-      } catch (error) {
-        if (cached) {
-          return { data: cached.value, cacheStatus: "STALE" as const };
-        }
-        throw error;
-      } finally {
-        this.inFlight.delete(key);
-      }
+      },
     });
-
-    this.inFlight.set(key, request as Promise<QueryResult<unknown>>);
-    return request;
+    const { value, ...timing } = scheduled;
+    return { ...value, ...timing };
   }
 }
 

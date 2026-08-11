@@ -13,4 +13,15 @@ describe("OpenAPI document", () => {
   it("keeps the standalone docs page free of favicon requests", () => {
     expect(openApiDocsHtml()).toContain('<link rel="icon" href="data:,">');
   });
+
+  it("documents request priority and scheduling response headers", () => {
+    const operation = openApiDocument.paths["/vns/{id}"].get;
+    expect(operation.parameters).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "X-Request-Priority", in: "header" }),
+    ]));
+    expect(operation.responses["200"].headers).toMatchObject({
+      "Server-Timing": expect.any(Object),
+      "X-Request-Priority": expect.any(Object),
+    });
+  });
 });

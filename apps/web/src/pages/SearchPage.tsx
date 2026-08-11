@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getSearchPage, type EntityType } from "../api";
 import { useBufferedPages } from "../buffered-pages";
@@ -17,20 +17,37 @@ export function SearchPage() {
   const type = (params.get("type") as EntityType | null) ?? "vn";
   const query = params.get("q") ?? "";
   const [draft, setDraft] = useState(query);
+  const nextPagePriority = useRef<"high" | "normal">("high");
 
   const search = useInfiniteQuery({
     queryKey: ["search", type, query],
-    queryFn: ({ pageParam }) => getSearchPage(type, query, pageParam),
+    queryFn: ({ pageParam, signal }) => getSearchPage(type, query, pageParam, 12, {
+      signal,
+      priority: nextPagePriority.current,
+    }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => (lastPage.more ? lastPage.page + 1 : undefined),
     enabled: Boolean(query),
   });
+  const fetchNextPage = useCallback(async (priority: "high" | "normal") => {
+    nextPagePriority.current = priority;
+    try {
+      return await search.fetchNextPage();
+    } finally {
+      nextPagePriority.current = "normal";
+    }
+  }, [search.fetchNextPage]);
+  const promoteNextPage = useCallback(() => {
+    const page = (search.data?.pages.at(-1)?.page ?? 0) + 1;
+    return getSearchPage(type, query, page, 12, { priority: "high" });
+  }, [query, search.data?.pages, type]);
   const buffered = useBufferedPages({
     scope: `search:${type}:${query}`,
     pages: search.data?.pages ?? [],
     hasNextPage: search.hasNextPage,
     isFetchingNextPage: search.isFetchingNextPage,
-    fetchNextPage: search.fetchNextPage,
+    fetchNextPage,
+    promoteNextPage,
   });
 
   function submit(event: FormEvent) {

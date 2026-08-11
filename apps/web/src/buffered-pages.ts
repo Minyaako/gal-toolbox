@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer } from "react";
 import type { Page } from "./api";
 
 export type BufferedPageState = {
@@ -75,18 +75,47 @@ type FetchNextPageResult<T> = {
   data?: { pages: Array<Page<T>> };
 };
 
+export function createBufferedPageFetcher<T>(
+  fetchNextPage: (priority: "high" | "normal") => Promise<FetchNextPageResult<T>>,
+  promoteNextPage: () => Promise<unknown>,
+) {
+  let pending: Promise<FetchNextPageResult<T>> | null = null;
+  const prefetch = () => {
+    if (!pending) {
+      const request = fetchNextPage("normal");
+      const tracked = request.finally(() => {
+        if (pending === tracked) pending = null;
+      });
+      pending = tracked;
+    }
+    return pending;
+  };
+  return {
+    prefetch,
+    async fetchForReveal() {
+      if (pending) {
+        await promoteNextPage();
+        return pending;
+      }
+      return fetchNextPage("high");
+    },
+  };
+}
+
 export function useBufferedPages<T>({
   scope,
   pages,
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
+  promoteNextPage,
 }: {
   scope: string;
   pages: Array<Page<T>>;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
-  fetchNextPage: () => Promise<FetchNextPageResult<T>>;
+  fetchNextPage: (priority: "high" | "normal") => Promise<FetchNextPageResult<T>>;
+  promoteNextPage: () => Promise<unknown>;
 }) {
   const [state, dispatch] = useReducer(reduceBufferedPage, {
     scope,
@@ -95,6 +124,10 @@ export function useBufferedPages<T>({
   const visiblePageCount =
     state.scope === scope ? state.visiblePageCount : 1;
   const buffered = hasBufferedPage(pages, visiblePageCount);
+  const requests = useMemo(
+    () => createBufferedPageFetcher(fetchNextPage, promoteNextPage),
+    [fetchNextPage, promoteNextPage],
+  );
 
   useEffect(() => {
     dispatch({ type: "sync-scope", scope });
@@ -109,10 +142,10 @@ export function useBufferedPages<T>({
         isFetchingNextPage,
       })
     ) {
-      void fetchNextPage();
+      void requests.prefetch();
     }
   }, [
-    fetchNextPage,
+    requests,
     hasNextPage,
     isFetchingNextPage,
     pages.length,
@@ -124,18 +157,17 @@ export function useBufferedPages<T>({
       dispatch({ type: "reveal", loadedPageCount: pages.length });
       return;
     }
-    if (!hasNextPage || isFetchingNextPage) return;
+    if (!hasNextPage) return;
 
-    const result = await fetchNextPage();
+    const result = await requests.fetchForReveal();
     dispatch({
       type: "reveal",
       loadedPageCount: result.data?.pages.length ?? pages.length,
     });
   }, [
-    fetchNextPage,
     hasNextPage,
-    isFetchingNextPage,
     pages,
+    requests,
     visiblePageCount,
   ]);
 

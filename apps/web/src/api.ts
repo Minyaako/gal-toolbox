@@ -1,4 +1,10 @@
 export type EntityType = "vn" | "character" | "staff" | "tag";
+export type RequestPriority = "high" | "normal" | "low";
+
+export type ApiRequestOptions = {
+  signal?: AbortSignal;
+  priority?: RequestPriority;
+};
 
 export type EntityName = {
   primary: string;
@@ -92,9 +98,13 @@ export class ApiError extends Error {
   }
 }
 
-async function api<T>(path: string): Promise<T> {
+async function api<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
-    headers: { Accept: "application/json" },
+    signal: options.signal,
+    headers: {
+      Accept: "application/json",
+      "X-Request-Priority": options.priority ?? "normal",
+    },
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
@@ -113,22 +123,25 @@ export const getSearchPage = (
   query: string,
   page: number,
   pageSize = 12,
+  options: ApiRequestOptions = {},
 ) =>
   api<Page<EntitySummary>>(
     `/search?type=${type}&q=${encodeURIComponent(query)}&page=${page}&pageSize=${pageSize}`,
+    options,
   );
 
-export const getVn = (id: string) => api<VnDetail>(`/vns/${id}`);
-export const getCharacter = (id: string) =>
-  api<CharacterDetail>(`/characters/${id}`);
-export const getStaff = (id: string) => api<StaffDetail>(`/staff/${id}`);
-export const getStaffCharacters = (id: string, page: number, pageSize = 12) =>
+export const getVn = (id: string, options: ApiRequestOptions = {}) => api<VnDetail>(`/vns/${id}`, options);
+export const getCharacter = (id: string, options: ApiRequestOptions = {}) =>
+  api<CharacterDetail>(`/characters/${id}`, options);
+export const getStaff = (id: string, options: ApiRequestOptions = {}) => api<StaffDetail>(`/staff/${id}`, options);
+export const getStaffCharacters = (id: string, page: number, pageSize = 12, options: ApiRequestOptions = {}) =>
   api<Page<StaffCharacter>>(
     `/staff/${id}/characters?page=${page}&pageSize=${pageSize}`,
+    options,
   );
-export const getTag = (id: string) => api<TagDetail>(`/tags/${id}`);
-export const getTagVns = (id: string, page: number, pageSize = 12) =>
-  api<Page<EntitySummary>>(`/tags/${id}/vns?page=${page}&pageSize=${pageSize}`);
+export const getTag = (id: string, options: ApiRequestOptions = {}) => api<TagDetail>(`/tags/${id}`, options);
+export const getTagVns = (id: string, page: number, pageSize = 12, options: ApiRequestOptions = {}) =>
+  api<Page<EntitySummary>>(`/tags/${id}/vns?page=${page}&pageSize=${pageSize}`, options);
 
 export function entityPath(entity: Pick<EntitySummary, "id" | "type">): string {
   return knowledgeEntityPath(entity);

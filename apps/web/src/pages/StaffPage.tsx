@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
+import { getStaffCharacters } from "../api";
 import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
@@ -8,17 +9,31 @@ import { staffCharactersQuery, staffQuery } from "../queries";
 
 export function StaffPage() {
   const { id = "" } = useParams();
+  const nextPagePriority = useRef<"high" | "normal">("normal");
   const detail = useQuery({ ...staffQuery(id), enabled: Boolean(id) });
   const roles = useInfiniteQuery({
-    ...staffCharactersQuery(id),
+    ...staffCharactersQuery(id, () => nextPagePriority.current),
     enabled: Boolean(id),
   });
+  const fetchNextPage = useCallback(async (priority: "high" | "normal") => {
+    nextPagePriority.current = priority;
+    try {
+      return await roles.fetchNextPage();
+    } finally {
+      nextPagePriority.current = "normal";
+    }
+  }, [roles.fetchNextPage]);
+  const promoteNextPage = useCallback(() => {
+    const page = (roles.data?.pages.at(-1)?.page ?? 0) + 1;
+    return getStaffCharacters(id, page, 12, { priority: "high" });
+  }, [id, roles.data?.pages]);
   const buffered = useBufferedPages({
     scope: `staff:${id}`,
     pages: roles.data?.pages ?? [],
     hasNextPage: roles.hasNextPage,
     isFetchingNextPage: roles.isFetchingNextPage,
-    fetchNextPage: roles.fetchNextPage,
+    fetchNextPage,
+    promoteNextPage,
   });
   const { visit } = useTrail();
 

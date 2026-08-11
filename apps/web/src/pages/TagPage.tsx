@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
+import { getTagVns } from "../api";
 import { useBufferedPages } from "../buffered-pages";
 import { AutoPageLoader, EntityCard, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
@@ -14,17 +15,31 @@ const categoryLabels = {
 
 export function TagPage() {
   const { id = "" } = useParams();
+  const nextPagePriority = useRef<"high" | "normal">("normal");
   const detail = useQuery({ ...tagQuery(id), enabled: Boolean(id) });
   const novels = useInfiniteQuery({
-    ...tagVnsQuery(id),
+    ...tagVnsQuery(id, () => nextPagePriority.current),
     enabled: Boolean(id),
   });
+  const fetchNextPage = useCallback(async (priority: "high" | "normal") => {
+    nextPagePriority.current = priority;
+    try {
+      return await novels.fetchNextPage();
+    } finally {
+      nextPagePriority.current = "normal";
+    }
+  }, [novels.fetchNextPage]);
+  const promoteNextPage = useCallback(() => {
+    const page = (novels.data?.pages.at(-1)?.page ?? 0) + 1;
+    return getTagVns(id, page, 12, { priority: "high" });
+  }, [id, novels.data?.pages]);
   const buffered = useBufferedPages({
     scope: `tag:${id}`,
     pages: novels.data?.pages ?? [],
     hasNextPage: novels.hasNextPage,
     isFetchingNextPage: novels.isFetchingNextPage,
-    fetchNextPage: novels.fetchNextPage,
+    fetchNextPage,
+    promoteNextPage,
   });
   const { visit } = useTrail();
 
