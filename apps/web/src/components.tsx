@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { FocusEventHandler, PointerEventHandler, ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { FocusEventHandler, MouseEventHandler, PointerEventHandler, ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   entityPath,
@@ -10,7 +10,7 @@ import {
 } from "./api";
 import { advanceIntersectionLatch } from "./buffered-pages";
 import { useSettings, type PrefetchPreference } from "./app/settings";
-import { prefetchEntity } from "./queries";
+import { prefetchEntity, promoteEntity } from "./queries";
 
 const labels: Record<EntityType, string> = {
   vn: "作品",
@@ -155,20 +155,43 @@ export function EntityCard({
 
 type EntityPrefetchHandlers = {
   onPointerEnter?: PointerEventHandler<HTMLAnchorElement>;
+  onPointerLeave?: PointerEventHandler<HTMLAnchorElement>;
   onFocus?: FocusEventHandler<HTMLAnchorElement>;
   onPointerDown: PointerEventHandler<HTMLAnchorElement>;
+  onClick: MouseEventHandler<HTMLAnchorElement>;
 };
 
-export function entityPrefetchHandlers(
+export function createEntityPrefetchIntent(
   preference: PrefetchPreference,
   prefetch: () => void,
-): EntityPrefetchHandlers {
-  const prefetchOnIntent = preference === "data-saver" ? undefined : prefetch;
-  return {
-    onPointerEnter: prefetchOnIntent,
-    onFocus: prefetchOnIntent,
-    onPointerDown: prefetch,
+  promote: () => void,
+): { handlers: EntityPrefetchHandlers; dispose: () => void } {
+  let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+  let promoted = false;
+  const clearHover = () => {
+    if (hoverTimer !== undefined) clearTimeout(hoverTimer);
+    hoverTimer = undefined;
   };
+  const promoteOnce = () => {
+    if (promoted) return;
+    promoted = true;
+    clearHover();
+    promote();
+  };
+  const handlers: EntityPrefetchHandlers = {
+    onPointerEnter: preference === "data-saver" ? undefined : () => {
+      clearHover();
+      hoverTimer = setTimeout(() => {
+        hoverTimer = undefined;
+        prefetch();
+      }, 150);
+    },
+    onPointerLeave: clearHover,
+    onFocus: prefetch,
+    onPointerDown: promoteOnce,
+    onClick: promoteOnce,
+  };
+  return { handlers, dispose: clearHover };
 }
 
 export function EntityPrefetchLink({
@@ -187,16 +210,25 @@ export function EntityPrefetchLink({
   const prefetch = useCallback(() => {
     void prefetchEntity(queryClient, entity);
   }, [entity, queryClient]);
+  const promote = useCallback(() => {
+    void promoteEntity(entity);
+  }, [entity]);
+  const intent = useMemo(
+    () => createEntityPrefetchIntent(settings.prefetch, prefetch, promote),
+    [prefetch, promote, settings.prefetch],
+  );
 
   useEffect(() => {
     if (settings.prefetch === "aggressive") prefetch();
   }, [prefetch, settings.prefetch]);
 
+  useEffect(() => () => intent.dispose(), [intent]);
+
   return <Link
     to={entityPath(entity)}
     className={className}
     aria-label={ariaLabel}
-    {...entityPrefetchHandlers(settings.prefetch, prefetch)}
+    {...intent.handlers}
   >{children}</Link>;
 }
 
