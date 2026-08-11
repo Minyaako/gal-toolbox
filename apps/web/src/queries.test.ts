@@ -52,7 +52,9 @@ describe("intent prefetch", () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
     const priorities: string[] = [];
-    vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      urls.push(String(input));
       priorities.push(new Headers(init?.headers).get("X-Request-Priority") ?? "");
       await gate;
       return new Response(JSON.stringify(vnDetail), {
@@ -65,6 +67,10 @@ describe("intent prefetch", () => {
     await vi.waitFor(() => expect(priorities).toEqual(["low"]));
     const high = promoteEntity(vnEntity);
     await vi.waitFor(() => expect(priorities).toEqual(["low", "high"]));
+    expect(urls).toEqual([
+      "/api/v1/vns/v17",
+      "/api/v1/vns/v17?_priorityPromotion=1",
+    ]);
 
     release();
     await Promise.all([low, high]);

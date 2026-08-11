@@ -115,10 +115,11 @@ const MAX_ACTIVE_INTENT_PREFETCHES = 3;
 
 export async function promoteEntity(entity: EntitySummary): Promise<void> {
   try {
-    if (entity.type === "vn") await getVn(entity.id, { priority: "high" });
-    else if (entity.type === "character") await getCharacter(entity.id, { priority: "high" });
-    else if (entity.type === "staff") await getStaff(entity.id, { priority: "high" });
-    else await getTag(entity.id, { priority: "high" });
+    const options = { priority: "high" as const, promotion: true };
+    if (entity.type === "vn") await getVn(entity.id, options);
+    else if (entity.type === "character") await getCharacter(entity.id, options);
+    else if (entity.type === "staff") await getStaff(entity.id, options);
+    else await getTag(entity.id, options);
   } catch {
     // The route query remains the owner of visible success and error state.
   }
