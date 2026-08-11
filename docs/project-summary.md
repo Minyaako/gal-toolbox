@@ -6,6 +6,7 @@
 
 ## Confirmed facts
 
+- 画师作品列表与声优角色列表已统一为共享自适应网格；1500px 内容区自然形成六列，760px 以下两列，430px 以下一列。
 - 已新增独立的 `VN → 画师 → VN` 探索链：VN 详情展示 `art` 与 `chardesign` 人员，画师详情使用 `/knowledge/artist/:id`，旧入口 `/artist/:id` 重定向到新路由。
 - 同一画师在同一作品中的原画／美术、角色设计 credit 会合并为一张作品卡，但每条角色标签与 `staff.note` 都会保留；首版不映射到具体角色。
 - BFF 已提供 `GET /api/v1/artists/:id` 与 `GET /api/v1/artists/:id/vns?page=...`，并在 VN 详情 DTO 中加入合并后的 `artists` 关系。
@@ -25,6 +26,7 @@
 
 ## Decisions
 
+- 作品型卡片网格使用 `auto-fit + minmax(205px, 1fr)`，收起未使用轨道；VN 详情中的画师关系列表继续保持独立的桌面两列布局。
 - 画师链与声优链保持平行路由和独立查询缓存，避免把“配音角色关系”与“作品画师关系”混入同一 staff 页面语义。
 - 画师意图预取沿用全局 low-priority 三槽预算，点击时提升为 high；画师作品列表继续使用“一页展示、一页缓冲”和按 `artist:<id>` 分页 scope。
 - QueryCache 状态栏订阅使用 React Query `notifyManager.batchCalls` 包装，防止冷画师路由注册查询时触发 React render-phase 更新警告。
@@ -48,6 +50,7 @@
 
 ## Files/repos touched
 
+- `apps/web/src/styles/knowledge.css` 与 `apps/web/src/pages/ArtistPage.test.tsx`：画师作品／声优角色共享自适应网格及断点合同测试。
 - `apps/api/src/app.ts`、`vndb.ts`、`openapi.ts` 与合同测试：画师详情/作品 API、VN 画师 credits 聚合、错误响应及 OpenAPI 1.3.0。
 - `apps/web/src/pages/ArtistPage.tsx`、`VnPage.tsx`、`queries.ts`、`components.tsx`、路由与测试：画师链、预取/提升、轨迹和分页。
 - `apps/web/src/app/AppShell.tsx`、`trail.tsx`、`styles/knowledge.css`：批处理缓存状态通知、严格轨迹缓存校验、画师卡片及长备注响应式布局。
@@ -100,6 +103,7 @@
 
 ## Validation evidence
 
+- 自适应网格：Web 90/90、typecheck、production build 与最终独立审阅通过；真实浏览器在 1920px 声优页显示六列，760px 两列、390px 一列，画师页自动填充且各断点均无横向溢出或控制台错误。
 - 画师链 API 与 Web 独立复审均通过；全仓测试 Tag 2/2、API 39/39、Web 89/89，根 typecheck、production build 与 `git diff --check` 通过。真实 `v17/s1928/v247` 数据完成桌面与 390px 验收：主内容/关系栏布局正确，`staff.note` 正常换行、无横向溢出，路由来回跳转正常，控制台 0 error/0 warning。
 
 - PR #3 合并前开发分支基线：Tag 2/2、API 29/29、Web 60/60 通过。

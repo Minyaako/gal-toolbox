@@ -41,6 +41,21 @@ it("keeps a long artist note visible in a narrow work card", () => {
   expect(readFileSync("src/styles/knowledge.css", "utf8")).toMatch(/\.card-meta \.artist-credits[^}]*white-space:\s*normal/);
 });
 
+it("shares the adaptive work grid contract with staff roles", () => {
+  const css = readFileSync("src/styles/knowledge.css", "utf8");
+  const sharedRule = (source: string, selectors: string[], columns: string) => [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)].some(([, selectorList, declarations]) => {
+    const ruleSelectors = selectorList!.split(",").map((selector) => selector.trim());
+    return selectors.every((selector) => ruleSelectors.includes(selector)) && declarations!.replace(/\s+/g, " ").includes(`grid-template-columns: ${columns};`);
+  });
+  const tabletRules = css.slice(css.indexOf("@media (max-width: 760px)"), css.indexOf("@media (max-width: 430px)"));
+  const phoneRules = css.slice(css.indexOf("@media (max-width: 430px)"));
+
+  expect(sharedRule(css.slice(0, css.indexOf("@media")), [".role-grid", ".artist-work-grid"], "repeat(auto-fit, minmax(205px, 1fr))")).toBe(true);
+  expect(sharedRule(tabletRules, [".role-grid", ".artist-work-grid"], "repeat(2, minmax(0, 1fr))")).toBe(true);
+  expect(sharedRule(phoneRules, [".role-grid", ".artist-work-grid"], "1fr")).toBe(true);
+  expect(css).toMatch(/\.artist-relation-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);\s*gap:\s*14px;\s*\}/s);
+});
+
 it("uses the artist scope and buffered-page loader label when more work pages exist", () => {
   vi.mocked(useBufferedPages).mockReturnValue({ items: page.items, hasBufferedPage: true, canRevealNextPage: true, isWaitingForBuffer: false, visiblePageCount: 1, revealNextPage: runtime.reveal } as ReturnType<typeof useBufferedPages>); const client = new QueryClient(); client.setQueryData(["artist", "s1928"], detail); client.setQueryData(["artist-vns", "s1928"], { pages: [{ ...page, more: true }], pageParams: [1] });
   const markup = renderToStaticMarkup(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/knowledge/artist/s1928"]}><SettingsProvider><TrailProvider><Routes><Route path="/knowledge/artist/:id" element={<ArtistPage />} /></Routes></TrailProvider></SettingsProvider></MemoryRouter></QueryClientProvider>);
