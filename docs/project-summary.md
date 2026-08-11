@@ -1,19 +1,23 @@
-# Project self-summary
+# Gal Toolbox project summary
 
 ## Current objective
 
-在 `Minyaako/gal-toolbox` 的 `dev` 分支持续交付 Gal 百宝箱 Web MVP。当前重点是压低角色详情、搜索和 Staff 翻页在冷缓存与预取竞争下的等待时间。
+在 `Minyaako/gal-toolbox` 中持续交付并运营 Gal 百宝箱 Web 应用。当前版本已经部署到生产环境，并通过优先级、取消与共享请求调度改善 VNDB 冷请求期间的交互响应，同时保证分级图片控件在详情、列表与窄关系卡中均可操作。
 
 ## Confirmed facts
 
-- 仓库：`https://github.com/Minyaako/gal-toolbox.git`；开发分支：`dev`；现有 PR：`dev -> main`。
-- 前端为 React + TypeScript SPA，后端为 Fastify BFF；数据经 `/api/v1` DTO 隔离 VNDB 原始结构，并使用 React Query、HTTP 与 SQLite TTL 缓存。
-- 正式路由包括 `/`、`/knowledge`、四类 `/knowledge/*/:id` 详情、`/ranking`、`/settings` 与 404；旧详情链接保留重定向。
-- 搜索、Staff 角色和 Tag 作品列表每页 12 条；前端采用“显示一页、缓冲下一页”。
-- VNDB 冷请求现由优先级调度器管理，而非等待上一请求完整结束的全局串行 Promise 链。
+- 仓库：`https://github.com/Minyaako/gal-toolbox.git`，默认分支为 `main`，开发分支为 `dev`。
+- 前端为 React + TypeScript SPA，后端为 Fastify BFF；API 使用 `/api/v1` DTO 隔离 VNDB 原始结构。
+- 正式路由包括 `/`、`/knowledge`、四类 `/knowledge/*/:id` 详情、`/ranking`、`/settings` 与显式 404；旧详情链接保留重定向。
+- 搜索、Staff 角色和 Tag 作品列表每页 12 条；前端保持“一页显示、一页缓冲”，并使用 React Query、HTTP 与 SQLite TTL 缓存。
+- VNDB 冷请求由优先级调度器管理；React Query 的 AbortSignal 贯通 BFF 与 VNDB fetch。
+- 中文 Tag 来自 `JodieRuth/VNDB-Profile-Search`，英文原名继续保留用于定位。
+- 生产实例位于 `https://gtool.minyako.top`，由共享 Caddy 提供 HTTPS。
+- 生产容器以非 root、只读根文件系统运行，只连接 `server_proxy`，不发布宿主机端口。
+- SQLite 缓存每小时执行一次 `prune()`；过期 7 天以内的数据可用于 `STALE` 回退。
+- VN DTO 已有 `rating` 与 `voteCount` 字段；`/ranking` 当前仍是核心占位路由。
 - 2026-08-11 实测慢角色详情的主要时间花在 BFF 调度队列：`queueWait` 约 8.0–8.7 秒，而 VNDB 上游约 0.38–1.05 秒；图片数量不是详情首屏的阻塞门槛。
 - 旧实现中 hover 的 low 详情预取与路由 high 查询共享同一个 React Query pending promise，因此点击后不会向 BFF 发出 high 请求；12 秒上游超时再叠加两次前端重试时，最坏可接近 39 秒。
-- 最终验证：Tag 翻译 2/2、API 31/31、Web 63/63，根 typecheck、production build、`git diff --check` 均通过；独立代码复审 PASS。
 
 ## Decisions
 
@@ -28,43 +32,58 @@
 - 分级图片按钮与导航链接为兄弟节点，不允许交互元素嵌套；层级为图片 z1、拉伸链接 z2、按钮 z3。
 - 72–82px 的 cast/relation 小图显示短标签“显示”，保留完整 aria-label；普通网格继续显示“显示分级图片”。
 - 不为满足“每任务一个提交”的形式要求改写已公开的审阅修复历史，保留独立修复提交便于追踪。
+- 普通 VNDB 网络错误映射为 502 `UPSTREAM_UNAVAILABLE`；客户端取消与超时保持可辨别，非取消错误存在近期过期缓存时返回 `STALE` 数据。
+- `/` 为“Gal 百宝箱”功能大厅，VNDB 联想搜索位于 `/knowledge`；排行与设置是同级模块。
+- 生产使用单实例 Node 容器、Docker Compose 和 SQLite 命名卷；发布保持手动，不添加 GitHub Actions。
+- 图片按 VNDB 分级字段默认模糊，不建立永久图片镜像。
 
-## Touched
+## Files/repos touched
 
 - `apps/api/src/request-scheduler.ts` 与测试：优先级、并发、节流、aging、同 key 共享和取消。
-- `apps/api/src/vndb.ts`、`app.ts`、`openapi.ts` 与测试：信号、优先级、Server-Timing、响应头和契约。
+- `apps/api/src/vndb.ts`、`app.ts`、`openapi.ts` 与测试：信号、优先级、错误映射、Server-Timing 和响应契约。
+- `apps/api/src/cache-maintenance.ts` 与测试：每小时清理过期 SQLite 缓存。
 - `apps/web/src/api.ts`、`queries.ts`、`query-client.ts`、`buffered-pages.ts` 与测试：端到端 signal、retry、预取与分页提升。
 - `apps/web/src/components.tsx` 与测试：150ms 意图预取、三槽预算以及 pointerdown/click high 提升。
 - `apps/web/src/pages/SearchPage.tsx`、`StaffPage.tsx`、`TagPage.tsx`：主动请求与自动缓冲优先级。
 - `apps/web/src/components.tsx`、`pages/VnPage.tsx`、相关样式与 happy-dom 测试：分级图片控件结构、层级与 compact 模式。
+- `Dockerfile`、`compose.yml`、`deploy/gtool.caddy`：生产容器与 HTTPS 路由。
+- `docs/deployment.md` 与 `docs/verification/gtool-production-acceptance.md`：手动发布、回滚和生产验收。
 - `docs/superpowers/specs/2026-08-11-priority-cancellation-image-reveal-design.md` 与对应实施计划。
 - `docs/superpowers/specs/2026-08-11-detail-priority-prefetch-timeout-design.md` 与对应实施计划。
 
 ## Open questions
 
 - Gal 排行的数据源、时间范围、去重规则与排序模型尚未确定。
-- 生产部署继续使用单实例 SQLite，还是迁移到共享 Redis/PostgreSQL 缓存，尚未确定。
-- 最终集成形态是独立服务、子路径模块还是 monorepo package，尚未确定。
-- 中文 Tag 的同步频率、人工纠错与上游反馈流程尚未确定。
+- 最终集成方式是独立服务、子路径模块还是 monorepo package。
+- 中文 Tag 的同步频率、人工纠错和上游反馈流程尚未确定。
+- 如果未来需要多副本，何时迁移到共享缓存与共享限流。
+- 仓库公开时间及项目许可证尚未确定。
 
 ## Risks
 
 - VNDB 上游仍可能波动；当前调度改善本地队头阻塞，但不能消除上游延迟。
 - 1500ms 启动间隔和并发 2 仍是保守策略；本轮没有修改这些参数，生产流量增长后需结合 VNDB 限额、429 与 Server-Timing 数据调整。
 - 首次图片访问仍受 VNDB CDN 和用户网络影响；尚无图片代理、Service Worker 或持久化图片缓存。
-- Node 内置 SQLite 仍会输出实验性警告；多实例部署需要稳定驱动和共享限流/缓存。
-- VNDB 免费 API 的授权与非商业使用边界需在商业化前重新确认。
+- Node 内置 SQLite 仍会输出实验性警告；多实例部署需要稳定驱动与共享限流/缓存。
+- VNDB 免费 API 面向非商业用途；商业化前必须重新确认授权和请求策略。
 
 ## Not done
 
-- 未实现登录、收藏、评分、用户列表、相似推荐或完整关系图布局。
-- `/ranking` 仍为空白占位页。
-- 未实现图片代理/CDN/Service Worker。
-- 未重写或 squash 已产生的审阅修复提交。
+- 未实现登录、收藏、评分、用户列表、Trait 中文化、相似推荐或完整关系图布局。
+- `/ranking` 仍为空白占位页，不展示虚构名次。
+- 未实现图片代理/CDN、Service Worker 或持久化图片缓存。
+- 未添加项目代码许可证文件。
 
-## Next
+## Next actions
 
-1. 用 Server-Timing 持续采集冷启动 queue/upstream 数据，比较角色详情、Staff 分页与主动搜索的 P50/P95。
-2. 根据实际 hover-to-click 命中率评估 150ms 延迟和 3 槽 low 预算是否需要继续调整。
-3. 明确 Gal 排行规则后，先定义 API 契约与验收用例，再替换占位页。
-4. 确定部署、许可证与中文 Tag 维护流程。
+1. 部署合并后的版本并复验 `VN → 角色 → 声优 → 角色/作品` 与 `Tag → VN` 关系链。
+2. 用 Server-Timing 采集冷启动 queue/upstream 数据，比较角色详情、主动搜索、Staff 分页与预取的 P50/P95。
+3. 根据 hover-to-click 命中率评估 150ms 延迟和 3 槽 low 预算是否需要调整，并根据图片下载耗时决定是否引入图片代理。
+4. 明确 Gal 排行规则后先写 API 契约与验收用例，再替换占位页。
+
+## Validation evidence
+
+- PR #3 合并前开发分支基线：Tag 2/2、API 29/29、Web 60/60 通过。
+- 本轮延迟修复合并远端部署分支前：Tag 2/2、API 31/31、Web 63/63，根 typecheck、production build、`git diff --check` 均通过；独立代码复审 PASS。
+- 上一生产版本：容器健康、HTTPS 首页与健康接口返回 200，真实 `v17` 查询成功且重复请求为 `X-Cache: HIT`。
+- 生产浏览器烟测：大厅与知识图鉴加载正常，`v17` 显示“时空轮回”，控制台 0 error/0 warning。

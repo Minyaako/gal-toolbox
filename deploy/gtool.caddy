@@ -1,0 +1,8 @@
+gtool.minyako.top {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+    reverse_proxy gal-toolbox:8787
+}

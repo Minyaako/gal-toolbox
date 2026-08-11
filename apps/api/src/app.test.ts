@@ -131,6 +131,23 @@ describe("public API", () => {
     expect(novels.json()).toMatchObject({ pageSize: 12, items: [{ id: "v17", type: "vn" }] });
   });
 
+  it("maps VNDB network failures to the upstream-unavailable response", async () => {
+    const fetcher = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    const app = await createTestApp(fetcher);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/search?type=vn&q=v17&page=1&pageSize=1",
+    });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({
+      error: { code: "UPSTREAM_UNAVAILABLE" },
+    });
+  });
+
   it("searches translated Tags locally and caches list responses for one minute", async () => {
     const app = await createTestApp((async () => {
       throw new Error("VNDB must not be called for Chinese Tag search");
