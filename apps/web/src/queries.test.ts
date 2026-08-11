@@ -1,9 +1,13 @@
 import { QueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { EntitySummary, Page, TagDetail, VnDetail } from "./api";
+import type { ArtistDetail, ArtistWork, EntitySummary, Page, TagDetail, VnDetail } from "./api";
 import {
+  artistQuery,
+  artistVnsQuery,
   characterQuery,
   prefetchEntity,
+  prefetchArtist,
+  promoteArtist,
   promoteEntity,
   searchQuery,
   staffCharactersQuery,
@@ -39,6 +43,29 @@ const vnDetail: VnDetail = {
   relations: [],
   cast: [],
   tags: [],
+  artists: [],
+};
+
+const artistEntity: EntitySummary = {
+  id: "s1928",
+  type: "staff",
+  name: { primary: "Artist", original: "Artist Original", romanized: "Artist Romanized", alternatives: [] },
+  image: null,
+};
+
+const artistDetail: ArtistDetail = {
+  entity: artistEntity,
+  description: "Artist biography",
+  language: "ja",
+  aliases: [],
+  externalLinks: [],
+};
+
+const artistWorks: Page<ArtistWork> = {
+  items: [{ vn: vnEntity, credits: [{ role: "art", note: null }] }],
+  page: 1,
+  pageSize: 12,
+  more: false,
 };
 
 afterEach(() => {
@@ -47,6 +74,47 @@ afterEach(() => {
 });
 
 describe("intent prefetch", () => {
+  it("keeps artist detail and work cache entries isolated while preloading first-page covers", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const priorities: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      priorities.push(new Headers(init?.headers).get("X-Request-Priority") ?? "");
+      const body = String(input).includes("/vns?") ? artistWorks : artistDetail;
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    }));
+    const preload = vi.fn();
+
+    await prefetchArtist(queryClient, artistEntity, preload);
+
+    expect(artistQuery("s1928").queryKey).toEqual(["artist", "s1928"]);
+    expect(artistVnsQuery("s1928").queryKey).toEqual(["artist-vns", "s1928"]);
+    expect(queryClient.getQueryData(["artist", "s1928"])).toEqual(artistDetail);
+    expect(queryClient.getQueryData(["artist-vns", "s1928"])).toEqual({ pages: [artistWorks], pageParams: [1] });
+    expect(queryClient.getQueryData(["staff", "s1928"])).toBeUndefined();
+    expect(queryClient.getQueryData(["staff-characters", "s1928"])).toBeUndefined();
+    expect(priorities).toEqual(["low", "low"]);
+    expect(preload).toHaveBeenCalledWith("https://t.vndb.org/cv/17-thumb.jpg");
+  });
+
+  it("sends direct high promotions for artist detail and first work page", async () => {
+    const urls: string[] = [];
+    const priorities: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input, init) => {
+      urls.push(String(input));
+      priorities.push(new Headers(init?.headers).get("X-Request-Priority") ?? "");
+      return new Response(JSON.stringify(String(input).includes("/vns?") ? artistWorks : artistDetail), {
+        status: 200, headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    await promoteArtist("s1928");
+
+    expect(urls).toEqual([
+      "/api/v1/artists/s1928?_priorityPromotion=1",
+      "/api/v1/artists/s1928/vns?page=1&pageSize=12&_priorityPromotion=1",
+    ]);
+    expect(priorities).toEqual(["high", "high"]);
+  });
   it("sends a separate high promotion while the low detail prefetch is pending", async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     let release!: () => void;
@@ -102,6 +170,18 @@ describe("intent prefetch", () => {
 
     await prefetchEntity(queryClient, entities[3]!, vi.fn());
     expect(startedIds).toEqual(["v1", "v2", "v3", "v4"]);
+  });
+
+  it("shares the three-slot intent budget between VN and artist prefetches", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let release!: () => void; const gate = new Promise<void>((resolve) => { release = resolve; }); const started: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input) => { started.push(String(input)); await gate; return new Response(JSON.stringify(String(input).includes("/artists/") ? (String(input).includes("/vns?") ? artistWorks : artistDetail) : vnDetail), { status: 200, headers: { "Content-Type": "application/json" } }); }));
+    const artist2 = { ...artistEntity, id: "s2" }; const artist3 = { ...artistEntity, id: "s3" }; const fourth = { ...artistEntity, id: "s4" };
+    const pending = [prefetchEntity(client, vnEntity, vi.fn()), prefetchArtist(client, artist2, vi.fn()), prefetchArtist(client, artist3, vi.fn()), prefetchArtist(client, fourth, vi.fn())];
+    await vi.waitFor(() => expect(started).toHaveLength(5));
+    expect(started.some((url) => url.includes("/artists/s4"))).toBe(false);
+    release(); await Promise.all(pending); await prefetchArtist(client, fourth, vi.fn());
+    expect(started.some((url) => url.includes("/artists/s4"))).toBe(true);
   });
 
   it("deduplicates concurrent VN requests and preloads the returned cover", async () => {

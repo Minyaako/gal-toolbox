@@ -93,6 +93,18 @@ describe("route transition state", () => {
   });
 });
 
+it("uses an artist-specific loading label and cache key", async () => {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(["staff", "s1928"], { id: "s1928" });
+  let resolveArtist!: (value: { id: string }) => void;
+  const artistFetch = queryClient.fetchQuery({ queryKey: ["artist", "s1928"], queryFn: () => new Promise((resolve) => { resolveArtist = resolve; }) });
+  expect(routeLoadingLabel("/knowledge/artist/s1928")).toBe("正在准备画师资料");
+  expect(routeTargetIsReady(queryClient, "/knowledge/artist/s1928")).toBe(false);
+  resolveArtist({ id: "s1928" });
+  await artistFetch;
+  expect(routeTargetIsReady(queryClient, "/knowledge/artist/s1928")).toBe(true);
+});
+
 it("keeps the polite transition status separate from aria-hidden curtains", () => {
   const queryClient = new QueryClient();
   const markup = renderToStaticMarkup(

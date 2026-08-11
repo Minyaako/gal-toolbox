@@ -116,6 +116,7 @@
 .card-copy::before { content: ""; position: absolute; top: 0; left: 18px; width: 34px; height: 1px; background: var(--accent-gold); }
 .name-block h2 { color: var(--ink-strong); }
 .name-block p, .card-meta { color: var(--ink-muted); }
+.card-meta .artist-credits, .card-meta .artist-credits * { white-space: normal; text-overflow: clip; overflow: visible; }
 .entity-kind { color: var(--accent-rose-deep); }
 .entity-character .entity-kind { color: var(--accent-rose); }
 .entity-staff .entity-kind { color: var(--accent-cyan); }
@@ -193,6 +194,8 @@
   padding: var(--space-section) 0 0;
 }
 .detail-relations .detail-section { padding: 0; }
+.detail-relations.is-single { grid-template-columns: minmax(0, 1fr); }
+.detail-primary-stack { display: grid; gap: 16px; min-width: 0; }
 .relation-rail { position: sticky; top: 18px; display: grid; gap: 16px; }
 .relation-rail-card {
   padding: 22px !important;
@@ -217,6 +220,13 @@
 .tag-cloud a { border-color: var(--border-soft); border-left: 3px solid var(--accent-archive); border-radius: 2px 9px 2px 9px; background: var(--surface-card); }
 .tag-cloud a:hover { border-color: var(--accent-archive); }
 .tag-cloud .tag-mark { color: var(--accent-archive); }
+.detail-artist { --entity-accent: var(--accent-rose); }
+.artist-relation-grid, .artist-work-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.artist-relation-card { min-width: 0; padding: 14px; border: 1px solid var(--border-soft); background: var(--surface-card); }
+.artist-credits { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; min-width: 0; }
+.artist-credits li { min-width: 0; overflow-wrap: anywhere; }
+.artist-credits span { display: inline-block; padding: 3px 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent-rose) 18%, var(--surface-card)); color: var(--ink-strong); font-size: var(--text-sm); }
+.artist-credits p { margin: 5px 0 0; overflow-wrap: anywhere; }
 
 @media (max-width: 980px) {
   .detail-relations { grid-template-columns: 1fr; }
@@ -242,4 +252,6 @@
   .entity-card { grid-template-columns: 106px minmax(0, 1fr); }
   .section-heading { grid-template-columns: 42px minmax(0, 1fr); }
   .section-heading > span { width: 34px; height: 34px; }
+  .artist-relation-grid, .artist-work-grid { grid-template-columns: 1fr; }
+  .artist-relation-card, .artist-credits, .artist-credits li { min-width: 0; }
 }

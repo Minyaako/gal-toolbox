@@ -1,5 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent } from "react";
+import { notifyManager, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import { NavLink, useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { ExplorationTrail } from "../trail";
 import { queryCacheSummary } from "../queries";
@@ -35,7 +35,17 @@ function StatusBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine !== false);
-  const [, refreshCache] = useState(0);
+  const cacheSnapshot = useSyncExternalStore(
+    (notify) => queryClient.getQueryCache().subscribe(notifyManager.batchCalls(notify)),
+    () => {
+      const summary = queryCacheSummary(queryClient);
+      return `${summary.total}:${summary.fetching}`;
+    },
+    () => {
+      const summary = queryCacheSummary(queryClient);
+      return `${summary.total}:${summary.fetching}`;
+    },
+  );
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine !== false);
@@ -47,11 +57,8 @@ function StatusBar() {
     };
   }, []);
 
-  useEffect(() => queryClient.getQueryCache().subscribe(() => {
-    refreshCache((revision) => revision + 1);
-  }), [queryClient]);
-
-  const cache = queryCacheSummary(queryClient);
+  const [total, fetching] = cacheSnapshot.split(":").map(Number);
+  const cache = { total, fetching };
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);

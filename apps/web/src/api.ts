@@ -47,6 +47,7 @@ export type VnDetail = {
     staff: EntitySummary;
     note: string | null;
   }>;
+  artists: ArtistRelation[];
   tags: Array<{
     tag: EntitySummary;
     rating: number;
@@ -71,6 +72,12 @@ export type StaffDetail = {
   aliases: Array<{ name: string; latin: string | null; ismain: boolean }>;
   externalLinks: Array<{ url: string; label: string }>;
 };
+
+export type ArtistRole = "art" | "chardesign";
+export type ArtistCredit = { role: ArtistRole; note: string | null };
+export type ArtistRelation = { staff: EntitySummary; credits: ArtistCredit[] };
+export type ArtistWork = { vn: EntitySummary; credits: ArtistCredit[] };
+export type ArtistDetail = StaffDetail;
 
 export type StaffCharacter = {
   character: EntitySummary;
@@ -143,6 +150,9 @@ export const getStaffCharacters = (id: string, page: number, pageSize = 12, opti
     `/staff/${id}/characters?page=${page}&pageSize=${pageSize}`,
     options,
   );
+export const getArtist = (id: string, options: ApiRequestOptions = {}) => api<ArtistDetail>(`/artists/${id}`, options);
+export const getArtistVns = (id: string, page: number, pageSize = 12, options: ApiRequestOptions = {}) =>
+  api<Page<ArtistWork>>(`/artists/${id}/vns?page=${page}&pageSize=${pageSize}`, options);
 export const getTag = (id: string, options: ApiRequestOptions = {}) => api<TagDetail>(`/tags/${id}`, options);
 export const getTagVns = (id: string, page: number, pageSize = 12, options: ApiRequestOptions = {}) =>
   api<Page<EntitySummary>>(`/tags/${id}/vns?page=${page}&pageSize=${pageSize}`, options);

@@ -10,7 +10,14 @@ import { resolve } from "node:path";
 import type { CacheStore } from "./cache.js";
 import { openApiDocsHtml, openApiDocument } from "./openapi.js";
 import { searchLocalizedTags } from "./tag-localization.js";
-import type { EntitySummary, EntityType } from "./types.js";
+import type {
+  ArtistCredit,
+  ArtistRelation,
+  ArtistRole,
+  ArtistWork,
+  EntitySummary,
+  EntityType,
+} from "./types.js";
 import {
   cleanVndbText,
   fields,
@@ -49,6 +56,7 @@ type RawVnDetail = RawVn & {
     staff: RawStaff;
   }>;
   tags?: Array<RawTag & { rating: number; spoiler: number }>;
+  staff?: RawArtistCredit[];
 };
 
 type RawCharacterDetail = RawCharacter & {
@@ -60,6 +68,16 @@ type RawStaffDetail = RawStaff & {
   description?: string | null;
   lang?: string;
   extlinks?: Array<{ url: string; label: string }>;
+};
+
+type RawArtistCredit = RawStaff & {
+  role: string;
+  note?: string | null;
+};
+
+const ARTIST_ROLE_ORDER: Record<ArtistRole, number> = {
+  art: 0,
+  chardesign: 1,
 };
 
 type RawTagDetail = RawTag & {
@@ -122,6 +140,74 @@ function dedupe(items: EntitySummary[]): EntitySummary[] {
     seen.add(item.id);
     return true;
   });
+}
+
+function isArtistRole(role: string): role is ArtistRole {
+  return role === "art" || role === "chardesign";
+}
+
+function normalizeArtistCredits(
+  credits: RawArtistCredit[],
+  staffId?: string,
+): ArtistCredit[] {
+  const seen = new Set<string>();
+  return credits
+    .filter((item): item is RawArtistCredit & { role: ArtistRole } =>
+      (!staffId || item.id === staffId) && isArtistRole(item.role),
+    )
+    .map((item) => ({
+      role: item.role,
+      note: cleanVndbText(item.note) || null,
+    }))
+    .filter((item) => {
+      const key = `${item.role}\u0000${item.note ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) => ARTIST_ROLE_ORDER[left.role] - ARTIST_ROLE_ORDER[right.role]);
+}
+
+function mapArtistRelations(credits: RawArtistCredit[]): ArtistRelation[] {
+  const grouped = new Map<string, RawArtistCredit[]>();
+  for (const credit of credits) {
+    if (!isArtistRole(credit.role)) continue;
+    const staffCredits = grouped.get(credit.id);
+    if (staffCredits) staffCredits.push(credit);
+    else grouped.set(credit.id, [credit]);
+  }
+  return [...grouped.values()].map((staffCredits) => ({
+    staff: mapStaffSummary(staffCredits[0]!),
+    credits: normalizeArtistCredits(staffCredits),
+  }));
+}
+
+function mapArtistWorks(
+  novels: Array<RawVn & { staff?: RawArtistCredit[] }>,
+  staffId: string,
+): ArtistWork[] {
+  const grouped = new Map<string, { vn: RawVn; credits: RawArtistCredit[] }>();
+  for (const novel of novels) {
+    const credits = novel.staff ?? [];
+    if (normalizeArtistCredits(credits, staffId).length === 0) continue;
+    const work = grouped.get(novel.id);
+    if (work) work.credits.push(...credits);
+    else grouped.set(novel.id, { vn: novel, credits: [...credits] });
+  }
+  return [...grouped.values()].map((work) => ({
+    vn: mapVnSummary(work.vn),
+    credits: normalizeArtistCredits(work.credits, staffId),
+  }));
+}
+
+function mapStaffDetail(staff: RawStaffDetail) {
+  return {
+    entity: mapStaffSummary(staff),
+    description: cleanVndbText(staff.description),
+    language: staff.lang ?? null,
+    aliases: staff.aliases ?? [],
+    externalLinks: staff.extlinks ?? [],
+  };
 }
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
@@ -269,6 +355,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
           "description,released,rating,votecount",
           `relations{relation,${fields.vnSummary}}`,
           `va{note,staff{${fields.staffSummary}},character{${fields.characterSummary}}}`,
+          `staff{role,note,${fields.staffSummary}}`,
           "tags{rating,spoiler,name,category}",
         ].join(","),
         results: 1,
@@ -293,6 +380,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
         staff: mapStaffSummary(item.staff),
         note: item.note ?? null,
       })),
+      artists: mapArtistRelations(vn.staff ?? []),
       tags: (vn.tags ?? [])
         .map((tag) => ({
           tag: mapTagSummary(tag),
@@ -346,12 +434,59 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     setPublicCache(reply, 300);
     const staff = result.data.results[0];
     if (!staff) return reply.code(404).send({ error: { code: "NOT_FOUND", message: "未找到该声优或制作人员。", requestId: request.id } });
+    return mapStaffDetail(staff);
+  });
+
+  app.get<{ Params: { id: string } }>("/api/v1/artists/:id", async (request, reply) => {
+    validateId(request.params.id, "s");
+    const result = await queryVndb<RawStaffDetail>(
+      request,
+      reply,
+      "/staff",
+      {
+        filters: ["and", ["id", "=", request.params.id], ["ismain", "=", 1]],
+        fields: `${fields.staffSummary},description,lang,extlinks{url,label}`,
+        results: 1,
+      },
+      ENTITY_TTL,
+    );
+    setPublicCache(reply, 300);
+    const staff = result.data.results[0];
+    if (!staff) return reply.code(404).send({ error: { code: "NOT_FOUND", message: "未找到该画师。", requestId: request.id } });
+    return mapStaffDetail(staff);
+  });
+
+  app.get<{ Params: { id: string } }>("/api/v1/artists/:id/vns", async (request, reply) => {
+    validateId(request.params.id, "s");
+    const { page, pageSize } = parsePage(request.query as Record<string, unknown>);
+    const result = await queryVndb<RawVn & { staff?: RawArtistCredit[] }>(
+      request,
+      reply,
+      "/vn",
+      {
+        filters: [
+          "staff",
+          "=",
+          [
+            "and",
+            ["id", "=", request.params.id],
+            ["or", ["role", "=", "art"], ["role", "=", "chardesign"]],
+          ],
+        ],
+        fields: `${fields.vnSummary},staff{role,note,${fields.staffSummary}}`,
+        sort: "rating",
+        reverse: true,
+        results: pageSize,
+        page,
+      },
+      RELATION_TTL,
+    );
+    setPublicCache(reply, 60);
     return {
-      entity: mapStaffSummary(staff),
-      description: cleanVndbText(staff.description),
-      language: staff.lang ?? null,
-      aliases: staff.aliases ?? [],
-      externalLinks: staff.extlinks ?? [],
+      items: mapArtistWorks(result.data.results, request.params.id),
+      page,
+      pageSize,
+      more: result.data.more,
     };
   });
 

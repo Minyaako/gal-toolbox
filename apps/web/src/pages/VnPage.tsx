@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { EntityCard, EntityImage, EntityPrefetchLink, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
+import { ArtistCredits, ArtistPrefetchLink, EntityCard, EntityImage, EntityPrefetchLink, LoadingScene, NameBlock, SectionHeading, StatePanel } from "../components";
 import { useTrail } from "../trail";
 import { vnQuery } from "../queries";
 import { getSecondaryName } from "../tag-label";
@@ -56,6 +56,7 @@ export function VnPage() {
       </header>
 
       <div className="detail-relations">
+      <div className="detail-primary-stack">
       <section className="detail-section relation-primary">
         <SectionHeading index="01" title="角色与声优" note="点击任意一侧都可以继续探索。" />
         {vn.cast.length ? (
@@ -79,10 +80,24 @@ export function VnPage() {
         ) : <StatePanel title="该作品暂无配音关系" />}
       </section>
 
+      {vn.artists.length ? <section className="detail-section artist-section">
+        <SectionHeading index="02" title="原画与角色设计" />
+        <div className="artist-relation-grid">
+          {vn.artists.map(({ staff, credits }) => <article className="artist-relation-card" key={staff.id}>
+            <ArtistPrefetchLink staff={staff} className="cast-person staff">
+              <span className="staff-monogram" aria-hidden="true">{staff.name.primary.slice(0, 1)}</span>
+              <span><b>{staff.name.primary}</b>{staff.name.original ? <small>{staff.name.original}</small> : null}<small>{staff.name.romanized}</small></span>
+            </ArtistPrefetchLink>
+            <ArtistCredits credits={credits} />
+          </article>)}
+        </div>
+      </section> : null}
+
+      </div>
       {visibleTags.length || vn.relations.length ? <RelationRail>
       {visibleTags.length ? (
         <section className="detail-section tag-section relation-rail-card">
-          <SectionHeading index="02" title="继续沿 Tag 探索" note="中文来自 VNDB Profile Search，英文保留用于定位。" />
+          <SectionHeading index="03" title="继续沿 Tag 探索" note="中文来自 VNDB Profile Search，英文保留用于定位。" />
           <div className="tag-cloud">
             {visibleTags.map((item) => {
                 const secondary = getSecondaryName(item.tag.name);
@@ -107,7 +122,7 @@ export function VnPage() {
 
       {vn.relations.length ? (
         <section className="detail-section relation-rail-card">
-          <SectionHeading index="03" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
+          <SectionHeading index="04" title="关联作品" note="续作、前作、同系列和其他直接关系。" />
           <div className="entity-grid compact-grid">
             {vn.relations.map(({ entity, relation }) => <EntityCard key={entity.id} entity={entity} meta={relationLabels[relation] ?? relation} compactImage />)}
           </div>

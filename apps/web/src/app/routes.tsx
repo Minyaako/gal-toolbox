@@ -6,11 +6,12 @@ import { NotFoundPage } from "../pages/NotFoundPage";
 import { RankingPage } from "../pages/RankingPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { StaffPage } from "../pages/StaffPage";
+import { ArtistPage } from "../pages/ArtistPage";
 import { TagPage } from "../pages/TagPage";
 import { VnPage } from "../pages/VnPage";
 import { AppShell } from "./AppShell";
 
-type LegacyEntityType = "vn" | "character" | "staff" | "tag";
+type LegacyEntityType = "vn" | "character" | "staff" | "artist" | "tag";
 
 export function legacyRedirectContract(
   type: LegacyEntityType,
@@ -38,18 +39,21 @@ export const appRoutes: RouteObject[] = [{
     { path: "/knowledge/vn/:id", element: <VnPage /> },
     { path: "/knowledge/character/:id", element: <CharacterPage /> },
     { path: "/knowledge/staff/:id", element: <StaffPage /> },
+    { path: "/knowledge/artist/:id", element: <ArtistPage /> },
     { path: "/knowledge/tag/:id", element: <TagPage /> },
     { path: "/ranking", element: <RankingPage /> },
     { path: "/settings", element: <SettingsPage /> },
     { path: "/vn/:id", element: <LegacyRedirect type="vn" /> },
     { path: "/character/:id", element: <LegacyRedirect type="character" /> },
     { path: "/staff/:id", element: <LegacyRedirect type="staff" /> },
+    { path: "/artist/:id", element: <LegacyRedirect type="artist" /> },
     { path: "/tag/:id", element: <LegacyRedirect type="tag" /> },
     { path: "*", element: <NotFoundPage /> },
   ],
 }];
 
 export function pageTitle(pathname: string): string {
+  if (/^\/knowledge\/artist\/[^/]+$/.test(pathname)) return "画师图鉴";
   if (/^\/knowledge\/tag\/[^/]+$/.test(pathname)) return "Tag 图鉴";
   if (/^\/knowledge\/(vn|character|staff)\/[^/]+$/.test(pathname) || pathname === "/knowledge") return "知识图鉴";
   if (pathname === "/ranking") return "Gal 排行";

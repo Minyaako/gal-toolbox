@@ -97,7 +97,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: {
     title: "Gal Toolbox API",
-    version: "1.2.0",
+    version: "1.3.0",
     description:
       "Stable API boundary for VNDB-powered visual association search. Frontends should depend on these DTOs instead of VNDB response shapes.",
   },
@@ -108,6 +108,7 @@ export const openApiDocument = {
     { name: "Visual novels" },
     { name: "Characters" },
     { name: "Staff" },
+    { name: "Artists" },
     { name: "Tags" },
   ],
   paths: {
@@ -233,6 +234,44 @@ export const openApiDocument = {
         },
       },
     },
+    "/artists/{id}": {
+      get: {
+        tags: ["Artists"],
+        summary: "Artist details and aliases",
+        parameters: [priorityParameter, idParameter("Artist", "^s\\d+$")],
+        responses: {
+          "200": {
+            description: "Artist detail; public cache: public, max-age=300 (300 seconds)",
+            headers: schedulingHeaders,
+            content: { "application/json": { schema: { $ref: "#/components/schemas/StaffDetail" } } },
+          },
+          "400": errorResponse,
+          "404": errorResponse,
+          "429": errorResponse,
+          "502": errorResponse,
+          "504": errorResponse,
+        },
+      },
+    },
+    "/artists/{id}/vns": {
+      get: {
+        tags: ["Artists"],
+        summary: "Highest-rated visual novels illustrated by an artist",
+        parameters: [priorityParameter, idParameter("Artist", "^s\\d+$"), ...pageParameters],
+        responses: {
+          "200": {
+            description: "Artist work page; public cache: public, max-age=60 (60 seconds)",
+            headers: schedulingHeaders,
+            content: { "application/json": { schema: { $ref: "#/components/schemas/ArtistWorkPage" } } },
+          },
+          "400": errorResponse,
+          "404": errorResponse,
+          "429": errorResponse,
+          "502": errorResponse,
+          "504": errorResponse,
+        },
+      },
+    },
     "/tags/{id}": {
       get: {
         tags: ["Tags"],
@@ -280,9 +319,43 @@ export const openApiDocument = {
           more: { type: "boolean" },
         },
       },
+      ArtistCredit: {
+        type: "object",
+        required: ["role", "note"],
+        properties: {
+          role: { type: "string", enum: ["art", "chardesign"] },
+          note: { type: ["string", "null"] },
+        },
+      },
+      ArtistRelation: {
+        type: "object",
+        required: ["staff", "credits"],
+        properties: {
+          staff: { $ref: "#/components/schemas/EntitySummary" },
+          credits: { type: "array", items: { $ref: "#/components/schemas/ArtistCredit" } },
+        },
+      },
+      ArtistWork: {
+        type: "object",
+        required: ["vn", "credits"],
+        properties: {
+          vn: { $ref: "#/components/schemas/EntitySummary" },
+          credits: { type: "array", items: { $ref: "#/components/schemas/ArtistCredit" } },
+        },
+      },
+      ArtistWorkPage: {
+        type: "object",
+        required: ["items", "page", "pageSize", "more"],
+        properties: {
+          items: { type: "array", items: { $ref: "#/components/schemas/ArtistWork" } },
+          page: { type: "integer" },
+          pageSize: { type: "integer" },
+          more: { type: "boolean" },
+        },
+      },
       VnDetail: {
         type: "object",
-        required: ["entity", "description", "released", "rating", "voteCount", "relations", "cast", "tags"],
+        required: ["entity", "description", "released", "rating", "voteCount", "relations", "cast", "artists", "tags"],
         properties: {
           entity: { $ref: "#/components/schemas/EntitySummary" },
           description: { type: ["string", "null"] },
@@ -291,6 +364,7 @@ export const openApiDocument = {
           voteCount: { type: "integer" },
           relations: { type: "array", items: { type: "object" } },
           cast: { type: "array", items: { type: "object" } },
+          artists: { type: "array", items: { $ref: "#/components/schemas/ArtistRelation" } },
           tags: { type: "array", items: { type: "object" } },
         },
       },

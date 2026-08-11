@@ -64,6 +64,137 @@ describe("public API", () => {
     );
   });
 
+  it("merges VN artist credits and exposes artist detail and works", async () => {
+    const v17 = {
+      id: "v17",
+      title: "Ever17",
+      titles: [],
+      aliases: [],
+      image: null,
+      staff: [
+        { id: "s1928", name: "Artist A", original: "画师A", aliases: [], role: "chardesign", note: " [b]Main cast[/b] " },
+        { id: "s1928", name: "Artist A", original: "画师A", aliases: [], role: "art", note: "   " },
+        { id: "s1928", name: "Artist A", original: "画师A", aliases: [], role: "art", note: null },
+        { id: "s223", name: "Artist B", original: "画师B", aliases: [], role: "art", note: "[i]Character sprites, BG[/i]" },
+        { id: "s999", name: "Director", original: null, aliases: [], role: "director", note: "Ignored" },
+      ],
+    };
+    const bodies: Array<Record<string, unknown>> = [];
+    const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      bodies.push(body);
+      const endpoint = new URL(String(input)).pathname;
+      const payload = endpoint.endsWith("/staff")
+        ? {
+            results: [{
+              id: "s1928",
+              name: "Artist A",
+              original: "画师A",
+              aliases: [{ name: "A", latin: "A", ismain: false }],
+              description: " [b]Artist biography[/b] ",
+              lang: "ja",
+              extlinks: [{ url: "https://example.com/a", label: "Portfolio" }],
+            }],
+            more: false,
+          }
+        : Array.isArray(body.filters) && body.filters[0] === "staff"
+          ? { results: [v17, v17], more: true }
+          : { results: [v17], more: false };
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+    const app = await createTestApp(fetcher);
+
+    const vnResponse = await app.inject({ method: "GET", url: "/api/v1/vns/v17" });
+    expect(vnResponse.statusCode).toBe(200);
+    expect(vnResponse.json().artists).toEqual([
+      {
+        staff: expect.objectContaining({ id: "s1928", type: "staff" }),
+        credits: [
+          { role: "art", note: null },
+          { role: "chardesign", note: "Main cast" },
+        ],
+      },
+      {
+        staff: expect.objectContaining({ id: "s223", type: "staff" }),
+        credits: [{ role: "art", note: "Character sprites, BG" }],
+      },
+    ]);
+
+    const artist = await app.inject({ method: "GET", url: "/api/v1/artists/s1928" });
+    expect(artist.statusCode).toBe(200);
+    expect(artist.headers["cache-control"]).toBe("public, max-age=300");
+    expect(artist.json()).toEqual({
+      entity: expect.objectContaining({ id: "s1928", type: "staff" }),
+      description: "Artist biography",
+      language: "ja",
+      aliases: [{ name: "A", latin: "A", ismain: false }],
+      externalLinks: [{ url: "https://example.com/a", label: "Portfolio" }],
+    });
+
+    const works = await app.inject({
+      method: "GET",
+      url: "/api/v1/artists/s1928/vns?page=2&pageSize=12",
+    });
+    expect(works.statusCode).toBe(200);
+    expect(works.headers["cache-control"]).toBe("public, max-age=60");
+    expect(works.json()).toEqual({
+      items: [{
+        vn: expect.objectContaining({ id: "v17", type: "vn" }),
+        credits: [
+          { role: "art", note: null },
+          { role: "chardesign", note: "Main cast" },
+        ],
+      }],
+      page: 2,
+      pageSize: 12,
+      more: true,
+    });
+
+    const workBody = bodies.find((body) => Array.isArray(body.filters) && body.filters[0] === "staff");
+    expect(workBody).toMatchObject({
+      filters: [
+        "staff",
+        "=",
+        [
+          "and",
+          ["id", "=", "s1928"],
+          ["or", ["role", "=", "art"], ["role", "=", "chardesign"]],
+        ],
+      ],
+      sort: "rating",
+      reverse: true,
+      results: 12,
+      page: 2,
+    });
+    expect(workBody?.fields).toContain("staff{role,note");
+  });
+
+  it("returns not found when an artist does not exist", async () => {
+    const app = await createTestApp((async () => new Response(JSON.stringify({
+      results: [],
+      more: false,
+    }), { status: 200, headers: { "Content-Type": "application/json" } })) as typeof fetch);
+
+    const response = await app.inject({ method: "GET", url: "/api/v1/artists/s404" });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ error: { code: "NOT_FOUND" } });
+  });
+
+  it("maps artist VNDB network failures to upstream unavailable", async () => {
+    const app = await createTestApp((async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch);
+
+    const response = await app.inject({ method: "GET", url: "/api/v1/artists/s1928/vns" });
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({ error: { code: "UPSTREAM_UNAVAILABLE" } });
+  });
+
   it("aborts VNDB work when the browser disconnects", async () => {
     let upstreamSignal: AbortSignal | undefined;
     let signalRecorded!: () => void;

@@ -36,6 +36,23 @@ type Page<T> = {
   pageSize: number;
   more: boolean;
 };
+
+type ArtistRole = "art" | "chardesign";
+
+type ArtistCredit = {
+  role: ArtistRole;
+  note: string | null;
+};
+
+type ArtistRelation = {
+  staff: EntitySummary;
+  credits: ArtistCredit[];
+};
+
+type ArtistWork = {
+  vn: EntitySummary;
+  credits: ArtistCredit[];
+};
 ```
 
 名称 `primary` 的选择顺序为：简体中文、繁体中文、原文、VNDB 罗马字显示名。Tag 有翻译时以简体中文为 `primary`，VNDB 英文原名放在 `original`。
@@ -58,7 +75,10 @@ type Page<T> = {
 - `description`, `released`, `rating`, `voteCount`
 - `relations: EntitySummary[]`
 - `cast: { character: EntitySummary; staff: EntitySummary; note: string | null }[]`
+- `artists: ArtistRelation[]`
 - `tags: { tag: EntitySummary; rating: number; spoiler: number; category: string | null }[]`
+
+`artists` 按画师在 VNDB 返回中的首次出现顺序分组。`role: "art"` 表示原画，`"chardesign"` 表示角色设计；同一画师的 credits 按原画、角色设计排序。每个 credit 的 `note` 会清理 VNDB BBCode 和首尾空白，空白或缺失时为 `null`，同一职责与同一规范化 note 会去重。`staff.note` 是逐作品、逐职责的 credit note，不是 Staff 的全局 biography。
 
 ### `GET /characters/:id`
 
@@ -73,6 +93,14 @@ type Page<T> = {
 ### `GET /staff/:id/characters?page=1&pageSize=12`
 
 返回声优配过的角色。每项中的 `appearances` 表示角色登场作品，不保证该声优为每个列出的版本配音。
+
+### `GET /artists/:id`
+
+返回画师 Staff detail，形状为 `{ entity, description, language, aliases, externalLinks }`。仅接受 `s` 前缀 ID；响应使用 `Cache-Control: public, max-age=300`。
+
+### `GET /artists/:id/vns?page=1&pageSize=12`
+
+返回 `Page<ArtistWork>`。仅保留目标画师的原画与角色设计 credit，跨重复 VNDB 行合并并按 `art`、`chardesign` 排序。作品按 VNDB rating 降序查询；响应使用 `Cache-Control: public, max-age=60`。
 
 ### `GET /tags/:id`
 

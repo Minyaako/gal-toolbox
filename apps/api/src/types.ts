@@ -28,4 +28,21 @@ export type Page<T> = {
   more: boolean;
 };
 
+export type ArtistRole = "art" | "chardesign";
+
+export type ArtistCredit = {
+  role: ArtistRole;
+  note: string | null;
+};
+
+export type ArtistRelation = {
+  staff: EntitySummary;
+  credits: ArtistCredit[];
+};
+
+export type ArtistWork = {
+  vn: EntitySummary;
+  credits: ArtistCredit[];
+};
+
 export type CacheStatus = "HIT" | "MISS" | "STALE";

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { entityPath, getVn } from "./api";
+import { entityPath, getArtist, getArtistVns, getVn } from "./api";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -20,6 +20,27 @@ describe("API request options", () => {
         Accept: "application/json",
         "X-Request-Priority": "high",
       },
+    });
+  });
+
+  it("targets artist detail and work endpoints with the supplied request options", async () => {
+    const signal = new AbortController().signal;
+    const fetcher = vi.fn(async () => new Response("{}", {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetcher);
+
+    await getArtist("s1928", { signal, priority: "low" });
+    await getArtistVns("s1928", 2, 12, { signal, priority: "high", promotion: true });
+
+    expect(fetcher).toHaveBeenNthCalledWith(1, "/api/v1/artists/s1928", {
+      signal,
+      headers: { Accept: "application/json", "X-Request-Priority": "low" },
+    });
+    expect(fetcher).toHaveBeenNthCalledWith(2, "/api/v1/artists/s1928/vns?page=2&pageSize=12&_priorityPromotion=1", {
+      signal,
+      headers: { Accept: "application/json", "X-Request-Priority": "high" },
     });
   });
 });
