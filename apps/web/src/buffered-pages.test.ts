@@ -106,4 +106,25 @@ describe("buffered pagination state", () => {
     await normal;
     expect(fetchNextPage).toHaveBeenCalledTimes(1);
   });
+
+  it("aborts the high promotion consumer when its page lifecycle ends", async () => {
+    const normal = new Promise<{ data: { pages: Array<Page<string>> } }>(() => undefined);
+    const fetchNextPage = vi.fn(() => normal);
+    let promotionSignal: AbortSignal | undefined;
+    const promoteNextPage = vi.fn((signal: AbortSignal) => {
+      promotionSignal = signal;
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+    });
+    const requests = createBufferedPageFetcher(fetchNextPage, promoteNextPage);
+    void requests.prefetch();
+    void requests.fetchForReveal().catch(() => undefined);
+    await Promise.resolve();
+    expect(promotionSignal?.aborted).toBe(false);
+
+    requests.dispose();
+
+    expect(promotionSignal?.aborted).toBe(true);
+  });
 });

@@ -131,6 +131,9 @@ export class RequestScheduler {
       this.items.delete(item.key);
       this.pump();
     } else {
+      if (this.items.get(item.key) === item) {
+        this.items.delete(item.key);
+      }
       item.controller.abort();
     }
   }
@@ -209,7 +212,9 @@ export class RequestScheduler {
       )
       .finally(() => {
         item.consumers.clear();
-        this.items.delete(item.key);
+        if (this.items.get(item.key) === item) {
+          this.items.delete(item.key);
+        }
         this.running -= 1;
         this.pump();
       });

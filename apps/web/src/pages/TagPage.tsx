@@ -29,9 +29,9 @@ export function TagPage() {
       nextPagePriority.current = "normal";
     }
   }, [novels.fetchNextPage]);
-  const promoteNextPage = useCallback(() => {
+  const promoteNextPage = useCallback((signal: AbortSignal) => {
     const page = (novels.data?.pages.at(-1)?.page ?? 0) + 1;
-    return getTagVns(id, page, 12, { priority: "high" });
+    return getTagVns(id, page, 12, { signal, priority: "high" });
   }, [id, novels.data?.pages]);
   const buffered = useBufferedPages({
     scope: `tag:${id}`,

@@ -226,6 +226,62 @@ describe("RequestScheduler", () => {
     expect(signals.get("running")?.aborted).toBe(true);
   });
 
+  it("starts fresh same-key work after the previous final consumer aborts", async () => {
+    const clock = controlledClock();
+    const scheduler = new RequestScheduler({
+      intervalMs: 0,
+      maxConcurrent: 2,
+      agingMs: 8_000,
+      now: clock.now,
+      setTimer: clock.setTimer,
+      clearTimer: clock.clearTimer,
+    });
+    const firstController = new AbortController();
+    const freshWork = deferred<string>();
+    let runs = 0;
+    const run = (signal: AbortSignal) => {
+      runs += 1;
+      if (runs === 1) {
+        return new Promise<string>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+        });
+      }
+      return freshWork.promise;
+    };
+    const first = scheduler.schedule({
+      key: "same",
+      priority: "normal",
+      signal: firstController.signal,
+      run,
+    });
+    await flushScheduler();
+    expect(runs).toBe(1);
+
+    const firstRejection = expect(first).rejects.toMatchObject({ name: "AbortError" });
+    firstController.abort();
+    const second = scheduler.schedule({ key: "same", priority: "high", run });
+    const secondOutcome = second.then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (reason: unknown) => ({ status: "rejected" as const, reason }),
+    );
+    await firstRejection;
+    await flushScheduler();
+    expect(runs).toBe(2);
+
+    const third = scheduler.schedule({ key: "same", priority: "normal", run });
+    await flushScheduler();
+    expect(runs).toBe(2);
+    freshWork.resolve("fresh");
+    const outcome = await secondOutcome;
+    expect(outcome).toEqual(expect.objectContaining({
+      status: "fulfilled",
+      value: expect.objectContaining({ value: "fresh" }),
+    }));
+    await expect(third).resolves.toEqual(
+      expect.objectContaining({ value: "fresh" }),
+    );
+  });
+
   it("keeps shared running work alive when only one consumer aborts", async () => {
     const { schedule, signals, work } = harness();
     const prefetchController = new AbortController();

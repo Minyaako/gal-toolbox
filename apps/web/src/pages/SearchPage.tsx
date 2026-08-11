@@ -37,9 +37,9 @@ export function SearchPage() {
       nextPagePriority.current = "normal";
     }
   }, [search.fetchNextPage]);
-  const promoteNextPage = useCallback(() => {
+  const promoteNextPage = useCallback((signal: AbortSignal) => {
     const page = (search.data?.pages.at(-1)?.page ?? 0) + 1;
-    return getSearchPage(type, query, page, 12, { priority: "high" });
+    return getSearchPage(type, query, page, 12, { signal, priority: "high" });
   }, [query, search.data?.pages, type]);
   const buffered = useBufferedPages({
     scope: `search:${type}:${query}`,

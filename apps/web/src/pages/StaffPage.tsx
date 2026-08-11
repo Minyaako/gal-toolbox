@@ -23,9 +23,9 @@ export function StaffPage() {
       nextPagePriority.current = "normal";
     }
   }, [roles.fetchNextPage]);
-  const promoteNextPage = useCallback(() => {
+  const promoteNextPage = useCallback((signal: AbortSignal) => {
     const page = (roles.data?.pages.at(-1)?.page ?? 0) + 1;
-    return getStaffCharacters(id, page, 12, { priority: "high" });
+    return getStaffCharacters(id, page, 12, { signal, priority: "high" });
   }, [id, roles.data?.pages]);
   const buffered = useBufferedPages({
     scope: `staff:${id}`,

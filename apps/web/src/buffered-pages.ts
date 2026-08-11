@@ -77,9 +77,10 @@ type FetchNextPageResult<T> = {
 
 export function createBufferedPageFetcher<T>(
   fetchNextPage: (priority: "high" | "normal") => Promise<FetchNextPageResult<T>>,
-  promoteNextPage: () => Promise<unknown>,
+  promoteNextPage: (signal: AbortSignal) => Promise<unknown>,
 ) {
   let pending: Promise<FetchNextPageResult<T>> | null = null;
+  let promotionController: AbortController | null = null;
   const prefetch = () => {
     if (!pending) {
       const request = fetchNextPage("normal");
@@ -94,10 +95,22 @@ export function createBufferedPageFetcher<T>(
     prefetch,
     async fetchForReveal() {
       if (pending) {
-        await promoteNextPage();
+        if (!promotionController) {
+          const controller = new AbortController();
+          promotionController = controller;
+          void promoteNextPage(controller.signal)
+            .catch(() => undefined)
+            .finally(() => {
+              if (promotionController === controller) promotionController = null;
+            });
+        }
         return pending;
       }
       return fetchNextPage("high");
+    },
+    dispose() {
+      promotionController?.abort();
+      promotionController = null;
     },
   };
 }
@@ -115,7 +128,7 @@ export function useBufferedPages<T>({
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   fetchNextPage: (priority: "high" | "normal") => Promise<FetchNextPageResult<T>>;
-  promoteNextPage: () => Promise<unknown>;
+  promoteNextPage: (signal: AbortSignal) => Promise<unknown>;
 }) {
   const [state, dispatch] = useReducer(reduceBufferedPage, {
     scope,
@@ -132,6 +145,8 @@ export function useBufferedPages<T>({
   useEffect(() => {
     dispatch({ type: "sync-scope", scope });
   }, [scope]);
+
+  useEffect(() => () => requests.dispose(), [requests, scope]);
 
   useEffect(() => {
     if (
