@@ -336,9 +336,10 @@ export function AutoPageLoader({
   useEffect(() => {
     const target = sentinelRef.current;
     if (!target || !hasNextPage || isFetching) return;
+    let active = true;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry) return;
+        if (!active || !entry) return;
         const next = advanceIntersectionLatch(
           autoLoadArmedRef.current,
           entry.isIntersecting,
@@ -355,7 +356,10 @@ export function AutoPageLoader({
       { rootMargin: "600px 0px" },
     );
     observer.observe(target);
-    return () => observer.disconnect();
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
   }, [hasNextPage, isFetching, onLoad, pageProgress]);
 
   if (!hasNextPage) return null;

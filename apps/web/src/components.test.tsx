@@ -313,7 +313,11 @@ describe("automatic pagination", () => {
     });
     const thirdObserver = ControllableIntersectionObserver.instances[2];
     if (!thirdObserver) throw new Error("observer was not rebuilt for progress");
-    await act(async () => thirdObserver.emit(true));
+    expect(secondObserver.disconnected).toBe(true);
+    await act(async () => {
+      secondObserver.emit(true);
+      thirdObserver.emit(true);
+    });
     expect(onLoad).toHaveBeenCalledTimes(2);
     expect(onLoad).toHaveBeenLastCalledWith(2);
 
