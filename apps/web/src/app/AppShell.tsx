@@ -94,6 +94,7 @@ function ShellLayout() {
       <div className="app-rail-links">
         <a href="/api/docs" target="_blank" rel="noreferrer">API 文档 ↗</a>
         <a href="https://vndb.org/" target="_blank" rel="noreferrer">数据来源 VNDB ↗</a>
+        <a href="https://github.com/Minyaako/gal-toolbox" target="_blank" rel="noreferrer">GitHub 源码 ↗</a>
       </div>
     </aside>
     <div className="app-stage">
@@ -104,6 +105,7 @@ function ShellLayout() {
         <span>Gal 百宝箱 / MVP 0.1</span>
         <span>非商业验证项目 · 数据来自 VNDB</span>
         <a href="https://github.com/JodieRuth/VNDB-Profile-Search" target="_blank" rel="noreferrer">Tag 中文：VNDB Profile Search ↗</a>
+        <a href="https://github.com/Minyaako/gal-toolbox" target="_blank" rel="noreferrer">GitHub 源码 ↗</a>
       </footer>
     </div>
     <NavigationLinks placement="bottom" />
