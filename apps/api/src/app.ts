@@ -33,6 +33,8 @@ import {
   VndbError,
 } from "./vndb.js";
 import type { RequestPriority } from "./request-scheduler.js";
+import { RankingError, RankingStore } from "./ranking-store.js";
+import { registerRankingRoutes } from "./ranking-routes.js";
 
 const SEARCH_TTL = 15 * 60 * 1000;
 const ENTITY_TTL = 24 * 60 * 60 * 1000;
@@ -42,6 +44,8 @@ type AppOptions = {
   cache: CacheStore;
   client?: VndbClient;
   logger?: boolean;
+  rankingStore?: RankingStore;
+  trustProxy?: string;
 };
 
 type RawVnDetail = RawVn & {
@@ -211,8 +215,10 @@ function mapStaffDetail(staff: RawStaffDetail) {
 }
 
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
-  const app = Fastify({ logger: options.logger ?? false });
+  const app = Fastify({ logger: options.logger ?? false, trustProxy: options.trustProxy ?? false });
   const client = options.client ?? new VndbClient(options.cache);
+  const rankingStore = options.rankingStore ?? new RankingStore();
+  if (!options.rankingStore) app.addHook("onClose", async () => rankingStore.close());
 
   async function queryVndb<T>(
     request: FastifyRequest,
@@ -576,6 +582,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   app.setErrorHandler((error, request, reply) => {
+    if (error instanceof RankingError) {
+      if (error.retryAfter) reply.header("Retry-After", error.retryAfter);
+      return reply.code(error.status).send({ error: { code: error.code, message: error.message } });
+    }
+    if (error && typeof error === "object" && "statusCode" in error && typeof error.statusCode === "number" && error.statusCode >= 400 && error.statusCode < 500) {
+      return reply.code(error.statusCode).send({ error: { code: "BAD_REQUEST", message: "请求格式不正确。" } });
+    }
     if (
       error instanceof Error &&
       error.name === "AbortError" &&
@@ -617,6 +630,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     });
   });
 
+  await registerRankingRoutes(app, rankingStore, client);
   const webDist = resolve(process.cwd(), "../web/dist");
   if (existsSync(webDist)) {
     await app.register(fastifyStatic, { root: webDist });

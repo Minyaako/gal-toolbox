@@ -13,7 +13,7 @@ export type NavigationItem = {
 export const mainNavigation: readonly NavigationItem[] = [
   { section: "home", to: "/", label: "首页", description: "Gal 百宝箱", marker: "01" },
   { section: "knowledge", to: "/knowledge", label: "知识图鉴", description: "作品、角色、声优与 Tag", marker: "02" },
-  { section: "ranking", to: "/ranking", label: "排行榜", description: "等待整理的收藏柜", marker: "03" },
+  { section: "ranking", to: "/ranking", label: "排行榜", description: "VNDB 与共享作品榜单", marker: "03" },
   { section: "settings", to: "/settings", label: "设置", description: "浏览与显示偏好", marker: "04" },
 ] as const;
 
