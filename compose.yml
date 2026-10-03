@@ -12,6 +12,9 @@ services:
       NODE_ENV: production
       PORT: "8787"
       CACHE_DB_PATH: /data/cache.sqlite
+      RANKING_DB_PATH: /data/rankings.sqlite
+      PUBLIC_ORIGIN: https://gtool.minyako.top
+      TRUST_PROXY_CIDRS: "172.18.0.0/16"
       VNDB_MIN_INTERVAL_MS: "2000"
     volumes:
       - gal_toolbox_data:/data

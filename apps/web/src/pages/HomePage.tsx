@@ -59,11 +59,11 @@ export function HomePage() {
       <article className="lobby-card lobby-ranking">
         <LobbyArtwork src="/decorations/lobby-ranking.webp" kind="ranking" />
         <div className="lobby-card-copy">
-          <p className="card-index">02 / In preparation</p>
+          <p className="card-index">02 / Shared rankings</p>
           <h2>Gal 排行</h2>
-          <p>评分、收藏与趋势榜单的框架正在整理。</p>
+          <p>浏览 VNDB 榜单，导入 Excel 或搜索作品，共同评分并整理自己的顺序。</p>
           <div className="rank-preview" aria-hidden="true"><b>01</b><span /><b>02</b><span /><b>03</b><span /></div>
-          <Link className="text-action" to="/ranking">查看筹备页 →</Link>
+          <Link className="text-action" to="/ranking">进入排行榜 →</Link>
         </div>
       </article>
 
