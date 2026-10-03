@@ -55,6 +55,12 @@ it("navigates from a stable route to an uncached artist without render-phase war
   vi.stubGlobal("fetch", fetcher);
   function NavigateToArtist() { const navigate = useNavigate(); useEffect(() => { navigate("/knowledge/artist/s1928"); }, [navigate]); return null; }
   const Routes = () => useRoutes(appRoutes); const container = document.createElement("div"); document.body.append(container); const root = createRoot(container); const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  client.setQueryData(["ranking-user"], { user: null });
+  client.setQueryData(["rankings"], { items: [] });
+  client.setQueryData(["ranking", "vndb"], { id: "vndb", title: "VNDB", version: 0, ownerId: null, mode: "auto", entries: [] });
+  client.setQueryDefaults(["ranking-user"], { queryFn: async () => ({ user: null }) });
+  client.setQueryDefaults(["rankings"], { staleTime: Infinity });
+  client.setQueryDefaults(["ranking"], { staleTime: Infinity });
   await act(async () => root.render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/ranking"]}><TrailProvider><NavigateToArtist /><Routes /></TrailProvider></MemoryRouter></QueryClientProvider>));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
   expect(container.textContent).toContain("画师"); expect(client.getQueryCache().find({ queryKey: ["artist", "s1928"], exact: true })).toBeDefined(); expect(error).not.toHaveBeenCalled(); await act(async () => root.unmount()); container.remove(); error.mockRestore(); vi.unstubAllGlobals();

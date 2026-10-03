@@ -4,6 +4,9 @@ Base path: `/api/v1`
 
 API 使用稳定 DTO 隔离 VNDB Kana API。新增字段应保持向后兼容；破坏性修改通过 `/api/v2` 发布。
 
+账号与共享榜单的新增契约见 [排行榜实施方案](ranking-implementation.md#frozen-v1-api-all-paths-below-apiv1)。
+榜单中的 `vndbRating` 已转换为十分制；现有 `/vns/:id` 的 `rating` 保持 VNDB 原始 10–100 单位，避免破坏已有客户端。
+
 ## Common types
 
 ```ts

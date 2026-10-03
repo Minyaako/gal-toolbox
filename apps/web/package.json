@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.11",
+    "exceljs": "4.4.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.6"

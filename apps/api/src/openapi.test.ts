@@ -4,7 +4,7 @@ import { openApiDocsHtml, openApiDocument } from "./openapi.js";
 describe("OpenAPI document", () => {
   it("publishes the current version and exploration paths", () => {
     expect(openApiDocument.openapi).toBe("3.1.0");
-    expect(openApiDocument.info.version).toBe("1.3.0");
+    expect(openApiDocument.info.version).toBe("1.4.0");
     expect(openApiDocument.tags).toContainEqual({ name: "Artists" });
     expect(openApiDocument.paths).toHaveProperty("/tags/{id}");
     expect(openApiDocument.paths).toHaveProperty("/tags/{id}/vns");

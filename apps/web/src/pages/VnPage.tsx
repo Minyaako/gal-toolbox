@@ -5,6 +5,7 @@ import { ArtistCredits, ArtistPrefetchLink, EntityCard, EntityImage, EntityPrefe
 import { useTrail } from "../trail";
 import { vnQuery } from "../queries";
 import { getSecondaryName } from "../tag-label";
+import { BoardContext } from "../ranking/BoardContext";
 
 const relationLabels: Record<string, string> = {
   ser: "同系列",
@@ -55,6 +56,7 @@ export function VnPage() {
         </div>
       </header>
 
+      <BoardContext vnId={id} />
       <div className="detail-relations">
       <div className="detail-primary-stack">
       <section className="detail-section relation-primary">

@@ -2,9 +2,13 @@
 
 ## Current objective
 
-在 `Minyaako/gal-toolbox` 中持续交付并运营 Gal 百宝箱 Web 应用。当前版本已经部署到生产环境，并通过优先级、取消与共享请求调度改善 VNDB 冷请求期间的交互响应，同时保证分级图片控件在详情、列表与窄关系卡中均可操作。
+在 `Minyaako/gal-toolbox` 中持续交付并运营 Gal 百宝箱 Web 应用。2026-10-02 已在独立工作区的 `codex/shared-rankings` 实现共享排行榜首版，用户已授权推送，尚未合并或部署。此前搜索栏/GitHub 入口修复已单独推送 PR #8（本分支包含该提交，排行榜 PR 以它为基线）。生产原有知识探索功能不受本次实现影响。
 
 ## Confirmed facts
+
+- 共享排行榜首版：邮箱/密码登录（未验证邮箱）、VNDB Top50 初始化、Excel 三列映射与搜索匹配、手动搜索添加、多人均分/独立评价、创建者手动排序与恢复自动排序。作品详情复用原页面，附带榜单上下文。
+- 账号和榜单存储在独立 `rankings.sqlite`，不是可删除缓存。正式部署前须按 `docs/deployment.md` 备份整个持久化状态并核对可信代理 CIDR。
+- 排序是相对队列，不是二维坐标。用户分0–10；手动排序参考分是目标原分+0.1，实际顺序优先，不修改用户评分。规则及接口见 `docs/ranking-implementation.md`。
 
 - 画师作品列表与声优角色列表已统一为共享自适应网格；1500px 内容区自然形成六列，760px 以下两列，430px 以下一列。
 - 已新增独立的 `VN → 画师 → VN` 探索链：VN 详情展示 `art` 与 `chardesign` 人员，画师详情使用 `/knowledge/artist/:id`，旧入口 `/artist/:id` 重定向到新路由。
@@ -20,7 +24,7 @@
 - 生产实例位于 `https://gtool.minyako.top`，由共享 Caddy 提供 HTTPS。
 - 生产容器以非 root、只读根文件系统运行，只连接 `server_proxy`，不发布宿主机端口。
 - SQLite 缓存每小时执行一次 `prune()`；过期 7 天以内的数据可用于 `STALE` 回退。
-- VN DTO 已有 `rating` 与 `voteCount` 字段；`/ranking` 当前仍是核心占位路由。
+- VN DTO 已有 `rating` 与 `voteCount` 字段；`/ranking` 已实现（本地待发布）。榜单分数为十分制，原 VN detail `rating` 保留上游10–100兼容。
 - 2026-08-11 实测慢角色详情的主要时间花在 BFF 调度队列：`queueWait` 约 8.0–8.7 秒，而 VNDB 上游约 0.38–1.05 秒；图片数量不是详情首屏的阻塞门槛。
 - 旧实现中 hover 的 low 详情预取与路由 high 查询共享同一个 React Query pending promise，因此点击后不会向 BFF 发出 high 请求；12 秒上游超时再叠加两次前端重试时，最坏可接近 39 秒。
 
@@ -50,6 +54,10 @@
 
 ## Files/repos touched
 
+- `apps/api/src/ranking-{store,routes,openapi}.ts` 与测试：账号、安全、持久化、合并/排序、OpenAPI1.4.0；`app.ts/server.ts` 接线。
+- `apps/web/src/ranking/`、`pages/RankingPage.tsx`、`pages/VnPage.tsx` 与测试：列表、账号、Excel懒加载、编辑预览与详情评价。
+- `compose.yml`、`docs/deployment.md`、`README.md`、`docs/ranking-implementation.md`：持久化备份、可信代理、边界和实施记录。依赖安全更新后审计0漏洞。
+
 - `apps/web/src/styles/knowledge.css` 与 `apps/web/src/pages/ArtistPage.test.tsx`：画师作品／声优角色共享自适应网格及断点合同测试。
 - `apps/api/src/app.ts`、`vndb.ts`、`openapi.ts` 与合同测试：画师详情/作品 API、VN 画师 credits 聚合、错误响应及 OpenAPI 1.3.0。
 - `apps/web/src/pages/ArtistPage.tsx`、`VnPage.tsx`、`queries.ts`、`components.tsx`、路由与测试：画师链、预取/提升、轨迹和分页。
@@ -70,7 +78,7 @@
 
 ## Open questions
 
-- Gal 排行的数据源、时间范围、去重规则与排序模型尚未确定。
+- 排行首版规则已确定；邮件验证/找回密码、私密访问、历史趋势与更大榜单规模不在首版。
 - 最终集成方式是独立服务、子路径模块还是 monorepo package。
 - 中文 Tag 的同步频率、人工纠错和上游反馈流程尚未确定。
 - 如果未来需要多副本，何时迁移到共享缓存与共享限流。
@@ -88,8 +96,8 @@
 
 - 画师链首版没有精确到“某画师负责某个角色”，也没有加入独立画师搜索入口；当前从 VN 作品关系进入画师页。
 
-- 未实现登录、收藏、评分、用户列表、Trait 中文化、相似推荐或完整关系图布局。
-- `/ranking` 仍为空白占位页，不展示虚构名次。
+- 未实现收藏、VNDB 用户列表同步、Trait 中文化、相似推荐或完整关系图布局。
+- 本次排行榜代码未合并或部署；未启用邮件验证/密码找回、私密权限或历史趋势。
 - 未实现图片代理/CDN、Service Worker 或持久化图片缓存。
 - 未添加项目代码许可证文件。
 
@@ -99,9 +107,13 @@
 2. 部署合并后的版本并复验 `VN → 角色 → 声优 → 角色/作品` 与 `Tag → VN` 关系链。
 3. 用 Server-Timing 采集冷启动 queue/upstream 数据，比较角色详情、主动搜索、Staff 分页与预取的 P50/P95。
 4. 根据 hover-to-click 命中率评估 150ms 延迟和 3 槽 low 预算是否需要调整，并根据图片下载耗时决定是否引入图片代理。
-5. 明确 Gal 排行规则后先写 API 契约与验收用例，再替换占位页。
+5. 排行首版经确认发布后，先备份持久化数据，再执行新版本健康、登录、合并与按IP限流验收。不能沿用删除整个volume的旧缓存清理方式。
 
 ## Validation evidence
+
+- 2026-10-02 排行：Tag2/API48/Web101测试、根typecheck、production build、diff检查通过；独立review问题均已修复。依赖audit fix最终0漏洞，ExcelJS仅按需分包（有体积warning）。
+- 实网浏览器：注册→VNDB50初始化→用户评分→输入名次保存/刷新→拖动预览/取消→真实xlsx匹配v17与未收录行→确认提交→原详情评价/返回。第二用户贡献后8.25与9.25平均为8.75、保留两条extra；非owner重置403、同IP重复导入429/Retry-After60。1440px与390px截图保存在output/playwright/rankings-*.png，无页面横向溢出。
+- 首次本地API在受限网络下VNDB502；改用获准联网的独立测试进程后真实VNDB初始化与匹配成功，后续浏览器无新运行时错误。测试数据库在apps/api/data/ranking-smoke*.sqlite，与生产无关。
 
 - 自适应网格：Web 90/90、typecheck、production build 与最终独立审阅通过；真实浏览器在 1920px 声优页显示六列，760px 两列、390px 一列，画师页自动填充且各断点均无横向溢出或控制台错误。
 - 画师链 API 与 Web 独立复审均通过；全仓测试 Tag 2/2、API 39/39、Web 89/89，根 typecheck、production build 与 `git diff --check` 通过。真实 `v17/s1928/v247` 数据完成桌面与 390px 验收：主内容/关系栏布局正确，`staff.note` 正常换行、无横向溢出，路由来回跳转正常，控制台 0 error/0 warning。

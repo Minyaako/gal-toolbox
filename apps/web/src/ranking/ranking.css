@@ -1,0 +1,49 @@
+.ranking-page .ranking-heading { padding: 24px 0 8px; }
+.ranking-page .ranking-heading h1 { font-size: clamp(2rem, 3vw, 3rem); }
+.ranking-account, .ranking-panel { margin-block: 18px; padding: 18px; border: 1px solid var(--line); background: var(--surface); }
+.ranking-page summary { cursor: pointer; font-weight: 600; }
+.ranking-page :is(input, select, textarea), .ranking-position input { max-width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; }
+.ranking-page button, .ranking-panel button { min-height: 44px; padding: 8px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; }
+.ranking-page button:hover { border-color: var(--accent); }
+.ranking-page button:disabled { cursor: not-allowed; opacity: .55; }
+.ranking-page button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.ranking-page [role="alert"] { color: var(--danger); }
+.ranking-form, .ranking-actions, .ranking-board-nav { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
+.ranking-form { margin-block: 14px; }
+.ranking-form label, .ranking-board-nav label, .ranking-import-rows label { display: grid; gap: 5px; min-width: 0; }
+.ranking-form .ranking-wide { flex-basis: 100%; }
+.ranking-form textarea { width: 100%; min-height: 90px; resize: vertical; }
+.ranking-form .ranking-check { display: flex; align-items: center; flex-basis: 100%; }
+.ranking-board-nav select { width: min(100%, 440px); }
+.ranking-board-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; margin-block: 28px 16px; }
+.ranking-board-heading h2, .ranking-board-heading p { margin: 0; }
+.ranking-board-heading p, .ranking-entry-copy small, .ranking-score small { color: var(--muted); font-size: var(--text-xs); }
+.ranking-queue { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+.ranking-queue > li { display: grid; grid-template-columns: 34px 52px minmax(0, 1fr) 90px auto; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.ranking-queue > li[draggable="true"] { cursor: grab; }
+.ranking-number { color: var(--accent); font-family: var(--font-mono); }
+.ranking-queue .image-frame, .ranking-queue .entity-image { width: 52px; height: 70px; min-height: 0; object-fit: cover; }
+.ranking-entry-copy { min-width: 0; overflow-wrap: anywhere; }
+.ranking-entry-copy > a, .ranking-entry-copy > strong { font-family: var(--font-display); font-size: var(--text-md); font-weight: 700; }
+.ranking-entry-copy small, .ranking-score small { display: block; }
+.ranking-score { text-align: right; font-family: var(--font-mono); }
+.ranking-score strong { font-size: var(--text-lg); }
+.ranking-position { display: flex; align-items: end; gap: 6px; }
+.ranking-position label { display: grid; font-size: var(--text-xs); }
+.ranking-position input { width: 70px; }
+.ranking-import-rows { display: grid; gap: 18px; padding-left: 24px; }
+.ranking-import-rows > li { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.ranking-candidates { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+.ranking-candidates button { overflow-wrap: anywhere; text-align: left; }
+.ranking-reviews { list-style: none; padding: 0; }
+.ranking-reviews li { padding-block: 10px; border-bottom: 1px solid var(--line); }
+.ranking-reviews p { white-space: pre-wrap; overflow-wrap: anywhere; margin-block: 4px; }
+@media (max-width: 760px) {
+  .ranking-queue > li { grid-template-columns: 24px 40px minmax(0, 1fr) 76px; gap: 8px; }
+  .ranking-queue .image-frame, .ranking-queue .entity-image { width: 40px; height: 56px; }
+  .ranking-queue > li > .ranking-actions, .ranking-queue > li > .ranking-position { grid-column: 3 / -1; }
+  .ranking-form > label:not(.ranking-check) { width: 100%; }
+  .ranking-panel, .ranking-account { padding: 12px; }
+  .ranking-board-nav { align-items: stretch; }
+  .ranking-board-nav label { flex: 1; }
+}

@@ -1,3 +1,5 @@
+import { rankingPaths, rankingSchemas } from "./ranking-openapi.js";
+
 const entityName = {
   type: "object",
   required: ["primary", "original", "romanized", "alternatives"],
@@ -97,7 +99,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: {
     title: "Gal Toolbox API",
-    version: "1.3.0",
+    version: "1.4.0",
     description:
       "Stable API boundary for VNDB-powered visual association search. Frontends should depend on these DTOs instead of VNDB response shapes.",
   },
@@ -110,8 +112,10 @@ export const openApiDocument = {
     { name: "Staff" },
     { name: "Artists" },
     { name: "Tags" },
+    { name: "Rankings" },
   ],
   paths: {
+    ...rankingPaths,
     "/health": {
       get: {
         tags: ["System"],
@@ -305,7 +309,9 @@ export const openApiDocument = {
     },
   },
   components: {
+    securitySchemes: { rankingSession: { type: "apiKey", in: "cookie", name: "gtool_session" } },
     schemas: {
+      ...rankingSchemas,
       EntityName: entityName,
       EntityImage: entityImage,
       EntitySummary: entitySummary,
@@ -407,7 +413,7 @@ export const openApiDocument = {
         properties: {
           error: {
             type: "object",
-            required: ["code", "message", "requestId"],
+            required: ["code", "message"],
             properties: {
               code: { type: "string" },
               message: { type: "string" },
@@ -422,10 +428,7 @@ export const openApiDocument = {
 
 export function openApiDocsHtml(): string {
   const rows = Object.entries(openApiDocument.paths)
-    .map(([path, item]) => {
-      const operation = "get" in item ? item.get : null;
-      return `<li><code>GET /api/v1${path}</code><span>${operation?.summary ?? ""}</span></li>`;
-    })
+    .flatMap(([path, item]) => Object.entries(item).map(([method, operation]) => `<li><code>${method.toUpperCase()} /api/v1${path}</code><span>${operation.summary}</span></li>`))
     .join("");
 
   return `<!doctype html>
